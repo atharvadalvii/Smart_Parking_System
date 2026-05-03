@@ -2,13 +2,23 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import Button from './Button';
+import { useAuth } from '@/hooks/useAuth';
 
 const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const { currentUser, isAuthenticated, logout } = useAuth();
+  const router = useRouter();
 
   const toggleMenu = () => {
     setIsMenuOpen(!isMenuOpen);
+  };
+
+  const handleLogout = () => {
+    logout();
+    setIsMenuOpen(false);
+    router.push('/');
   };
 
   const navLinks = [
@@ -41,12 +51,31 @@ const Navbar = () => {
 
         {/* Desktop CTA */}
         <div className="hidden md:flex items-center gap-4">
-          <Link href="/login">
-            <Button variant="outlineDark">Sign in</Button>
-          </Link>
-          <Link href="/register">
-            <Button variant="black">Join now</Button>
-          </Link>
+          {isAuthenticated ? (
+            <>
+              <Link href="/qrcode">
+                <Button variant="ghost">My QR</Button>
+              </Link>
+              <div className="flex items-center gap-3 pl-2 border-l border-divider">
+                <div className="w-[32px] h-[32px] rounded-full bg-starbucks-green text-white text-[14px] font-bold flex items-center justify-center">
+                  {currentUser?.name?.charAt(0)?.toUpperCase() || 'U'}
+                </div>
+                <span className="text-[14px] font-semibold text-text-black max-w-[120px] truncate">
+                  {currentUser?.name || 'User'}
+                </span>
+              </div>
+              <Button variant="outlineDark" size="sm" onClick={handleLogout}>Log out</Button>
+            </>
+          ) : (
+            <>
+              <Link href="/login">
+                <Button variant="outlineDark">Sign in</Button>
+              </Link>
+              <Link href="/register">
+                <Button variant="black">Join now</Button>
+              </Link>
+            </>
+          )}
         </div>
 
         {/* Mobile Menu Button */}
@@ -76,12 +105,31 @@ const Navbar = () => {
               </Link>
             ))}
             <div className="flex flex-col gap-3 pt-4">
-              <Link href="/login" onClick={() => setIsMenuOpen(false)}>
-                <Button variant="outlineDark" className="w-full">Sign in</Button>
-              </Link>
-              <Link href="/register" onClick={() => setIsMenuOpen(false)}>
-                <Button variant="black" className="w-full">Join now</Button>
-              </Link>
+              {isAuthenticated ? (
+                <>
+                  <div className="flex items-center gap-3 pb-3 border-b border-divider">
+                    <div className="w-[36px] h-[36px] rounded-full bg-starbucks-green text-white text-[16px] font-bold flex items-center justify-center">
+                      {currentUser?.name?.charAt(0)?.toUpperCase() || 'U'}
+                    </div>
+                    <span className="text-[16px] font-semibold text-text-black">
+                      {currentUser?.name || 'User'}
+                    </span>
+                  </div>
+                  <Link href="/qrcode" onClick={() => setIsMenuOpen(false)}>
+                    <Button variant="primary" className="w-full">My QR Code</Button>
+                  </Link>
+                  <Button variant="outlineDark" className="w-full" onClick={handleLogout}>Log out</Button>
+                </>
+              ) : (
+                <>
+                  <Link href="/login" onClick={() => setIsMenuOpen(false)}>
+                    <Button variant="outlineDark" className="w-full">Sign in</Button>
+                  </Link>
+                  <Link href="/register" onClick={() => setIsMenuOpen(false)}>
+                    <Button variant="black" className="w-full">Join now</Button>
+                  </Link>
+                </>
+              )}
             </div>
           </nav>
         </div>

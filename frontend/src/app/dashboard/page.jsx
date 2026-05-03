@@ -1,6 +1,7 @@
 "use client";
 
 import React from 'react';
+import { useRouter } from 'next/navigation';
 import { useParkingData } from '@/hooks/useParkingData';
 import ParkingMap from '@/components/parking/ParkingMap';
 import SlotIndicator from '@/components/parking/SlotIndicator';
@@ -10,10 +11,13 @@ import Card from '@/components/common/Card';
 
 export default function DashboardPage() {
   const { slots, gates, vehicleCount, totalSlots, isConnected } = useParkingData();
+  const router = useRouter();
 
   const handleSlotClick = (slotId) => {
-    console.log(`Clicked slot ${slotId}`);
-    // In later phases, this could open a modal or navigate to booking
+    const slot = slots?.find(s => s.id === slotId);
+    if (slot && slot.status === 'free') {
+      router.push(`/booking?slot=${slot.name}`);
+    }
   };
 
   return (
@@ -44,8 +48,9 @@ export default function DashboardPage() {
         {/* Left Column: Map (Takes up ~65% on desktop) */}
         <div className="w-full lg:w-[65%] flex flex-col gap-[24px]">
           <Card elevated className="w-full h-[500px] lg:h-[600px] p-0 overflow-hidden flex flex-col">
-            <div className="px-[24px] py-[16px] border-b border-divider bg-white shrink-0">
+            <div className="px-[24px] py-[16px] border-b border-divider bg-white shrink-0 flex items-center justify-between">
               <h2 className="text-[19px] font-semibold text-text-black">Parking Map</h2>
+              <span className="text-[13px] text-text-black-soft">Click a green slot to book</span>
             </div>
             <div className="flex-grow bg-[#f2f0eb] relative overflow-hidden">
               <ParkingMap slots={slots} gates={gates} onSlotClick={handleSlotClick} />

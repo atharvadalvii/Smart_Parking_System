@@ -1,9 +1,13 @@
+"use client";
+
 import React from 'react';
 import Link from 'next/link';
 import Button from '@/components/common/Button';
 import Card from '@/components/common/Card';
+import { useAuth } from '@/hooks/useAuth';
 
 export default function LandingPage() {
+  const { isAuthenticated } = useAuth();
   const features = [
     {
       title: "Real-time Monitoring",
@@ -13,7 +17,7 @@ export default function LandingPage() {
     {
       title: "QR-Based Entry",
       icon: "📱",
-      description: "Enjoy a seamless entry experience using your exclusive QR code. No tickets needed."
+      description: "Enjoy a seamless entry experience using your personal membership QR code. No tickets needed."
     },
     {
       title: "Easy Payment",
@@ -40,12 +44,25 @@ export default function LandingPage() {
               Experience the next-generation smart parking management system. Say goodbye to the hassle of finding a spot. With real-time monitoring, automated guidance, and one-click booking, parking has never been easier.
             </p>
             <div className="flex flex-col sm:flex-row gap-[16px]">
-              <Link href="/register">
-                <Button variant="primary" size="lg" className="w-full sm:w-auto">Book Now</Button>
-              </Link>
-              <Link href="/dashboard">
-                <Button variant="outlineDark" size="lg" className="w-full sm:w-auto">View Dashboard</Button>
-              </Link>
+              {isAuthenticated ? (
+                <>
+                  <Link href="/qrcode">
+                    <Button variant="primary" size="lg" className="w-full sm:w-auto">My QR Code</Button>
+                  </Link>
+                  <Link href="/dashboard">
+                    <Button variant="outlineDark" size="lg" className="w-full sm:w-auto">Dashboard</Button>
+                  </Link>
+                </>
+              ) : (
+                <>
+                  <Link href="/register">
+                    <Button variant="primary" size="lg" className="w-full sm:w-auto">Get Started</Button>
+                  </Link>
+                  <Link href="/dashboard">
+                    <Button variant="outlineDark" size="lg" className="w-full sm:w-auto">Dashboard</Button>
+                  </Link>
+                </>
+              )}
             </div>
           </div>
           <div className="w-full md:w-[40%] flex justify-center items-center">
@@ -80,18 +97,18 @@ export default function LandingPage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-[40px] md:gap-[48px] max-w-[1000px] mx-auto">
             <div className="flex flex-col items-center text-center">
               <div className="w-[56px] h-[56px] rounded-[50%] bg-green-accent text-white text-[24px] font-bold flex items-center justify-center mb-[24px] shadow-[0_0_6px_rgba(0,0,0,0.24)]">1</div>
-              <h3 className="text-[19px] font-semibold mb-[16px]">Register & Book</h3>
-              <p className="text-[16px] text-text-white-soft leading-[1.5]">Create an account, select your preferred parking slot, and receive your exclusive QR code.</p>
+              <h3 className="text-[19px] font-semibold mb-[16px]">Register & Get QR</h3>
+              <p className="text-[16px] text-text-white-soft leading-[1.5]">Create an account to receive your permanent personal parking QR code. Book a slot in advance.</p>
             </div>
             <div className="flex flex-col items-center text-center">
               <div className="w-[56px] h-[56px] rounded-[50%] bg-green-accent text-white text-[24px] font-bold flex items-center justify-center mb-[24px] shadow-[0_0_6px_rgba(0,0,0,0.24)]">2</div>
               <h3 className="text-[19px] font-semibold mb-[16px]">Scan to Enter</h3>
-              <p className="text-[16px] text-text-white-soft leading-[1.5]">Present your QR code at the entrance. The system will open the gate and guide you to your slot.</p>
+              <p className="text-[16px] text-text-white-soft leading-[1.5]">Present your personal QR code at the entrance. The gate opens automatically if you have an active booking.</p>
             </div>
             <div className="flex flex-col items-center text-center">
               <div className="w-[56px] h-[56px] rounded-[50%] bg-green-accent text-white text-[24px] font-bold flex items-center justify-center mb-[24px] shadow-[0_0_6px_rgba(0,0,0,0.24)]">3</div>
               <h3 className="text-[19px] font-semibold mb-[16px]">Seamless Exit</h3>
-              <p className="text-[16px] text-text-white-soft leading-[1.5]">Scan again upon exit. The system calculates duration and allows you to pay online effortlessly.</p>
+              <p className="text-[16px] text-text-white-soft leading-[1.5]">Scan the same QR code upon exit. The system calculates duration and allows you to pay online effortlessly.</p>
             </div>
           </div>
         </div>
@@ -100,10 +117,21 @@ export default function LandingPage() {
       {/* Section 4: CTA */}
       <section className="bg-neutral-warm px-4 md:px-6 lg:px-10 py-[80px] text-center border-t border-divider">
         <div className="container mx-auto max-w-[1440px]">
-          <h2 className="text-[24px] font-semibold mb-[32px] text-text-black">Ready to Get Started?</h2>
-          <Link href="/register">
-            <Button variant="primary" size="lg">Create an Account</Button>
-          </Link>
+          {isAuthenticated ? (
+            <>
+              <h2 className="text-[24px] font-semibold mb-[32px] text-text-black">Ready to Park?</h2>
+              <Link href="/qrcode">
+                <Button variant="primary" size="lg">View My QR Code</Button>
+              </Link>
+            </>
+          ) : (
+            <>
+              <h2 className="text-[24px] font-semibold mb-[32px] text-text-black">Ready to Get Started?</h2>
+              <Link href="/register">
+                <Button variant="primary" size="lg">Create an Account</Button>
+              </Link>
+            </>
+          )}
         </div>
       </section>
     </div>
