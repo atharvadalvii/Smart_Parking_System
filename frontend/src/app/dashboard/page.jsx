@@ -18,14 +18,14 @@ export default function DashboardPage() {
 
   return (
     <div className="flex-grow container mx-auto px-4 md:px-6 lg:px-10 max-w-[1440px] py-[32px] md:py-[48px]">
-      
+
       {/* Header Area */}
       <div className="flex flex-col md:flex-row md:items-end justify-between mb-[32px] gap-[16px]">
         <div>
           <h1 className="text-[24px] md:text-[32px] font-semibold text-starbucks-green mb-[4px]">Dashboard</h1>
           <p className="text-[16px] text-text-black-soft">Real-time parking status overview</p>
         </div>
-        
+
         {/* Live Status Indicator */}
         <div className="flex items-center gap-[8px] bg-white px-[16px] py-[8px] rounded-[50px] shadow-[0_0_0.5px_rgba(0,0,0,0.14),0_1px_1px_rgba(0,0,0,0.24)]">
           <div className="relative flex h-3 w-3">
@@ -40,7 +40,7 @@ export default function DashboardPage() {
 
       {/* Main Content: Dual Column Layout */}
       <div className="flex flex-col lg:flex-row gap-[24px] lg:gap-[32px]">
-        
+
         {/* Left Column: Map (Takes up ~65% on desktop) */}
         <div className="w-full lg:w-[65%] flex flex-col gap-[24px]">
           <Card elevated className="w-full h-[500px] lg:h-[600px] p-0 overflow-hidden flex flex-col">
@@ -48,18 +48,18 @@ export default function DashboardPage() {
               <h2 className="text-[19px] font-semibold text-text-black">Parking Map</h2>
             </div>
             <div className="flex-grow bg-[#f2f0eb] relative overflow-hidden">
-               <ParkingMap slots={slots} gates={gates} onSlotClick={handleSlotClick} />
+              <ParkingMap slots={slots} gates={gates} onSlotClick={handleSlotClick} />
             </div>
           </Card>
         </div>
 
         {/* Right Column: Status Panels (Takes up ~35% on desktop) */}
         <div className="w-full lg:w-[35%] flex flex-col gap-[24px]">
-          
+
           <VehicleCounter vehicleCount={vehicleCount} totalSlots={totalSlots} />
-          
+
           <GateStatus gates={gates} />
-          
+
           {/* Slots List */}
           <div className="flex flex-col gap-[16px]">
             <h2 className="text-[19px] font-semibold text-text-black mt-[8px]">Slot Details</h2>
