@@ -2,8 +2,10 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import Card from '@/components/common/Card';
 import Button from '@/components/common/Button';
+import { useAuth } from '@/hooks/useAuth';
 
 export default function RegisterPage() {
   const [formData, setFormData] = useState({ 
@@ -15,6 +17,9 @@ export default function RegisterPage() {
     confirmPassword: '' 
   });
   const [errors, setErrors] = useState({});
+  const [serverError, setServerError] = useState('');
+  const { register } = useAuth();
+  const router = useRouter();
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -22,6 +27,7 @@ export default function RegisterPage() {
     if (errors[name]) {
       setErrors((prev) => ({ ...prev, [name]: '' }));
     }
+    if (serverError) setServerError('');
   };
 
   const validate = () => {
@@ -57,8 +63,12 @@ export default function RegisterPage() {
   const handleSubmit = (e) => {
     e.preventDefault();
     if (validate()) {
-      console.log('Registration attempt with:', formData);
-      // Backend integration will go here
+      const result = register(formData);
+      if (result.success) {
+        router.push('/dashboard');
+      } else {
+        setServerError(result.error);
+      }
     }
   };
 
@@ -71,6 +81,11 @@ export default function RegisterPage() {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-[24px]">
+          {serverError && (
+            <div className="bg-error/10 border border-error/30 text-error text-[14px] px-[16px] py-[12px] rounded-[8px] text-center font-medium">
+              {serverError}
+            </div>
+          )}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-[16px] md:gap-[24px]">
             <div>
               <label className="block text-[14px] font-semibold mb-[8px] text-text-black" htmlFor="name">Name</label>

@@ -14,16 +14,25 @@ export const metadata = {
 
 import Navbar from "@/components/common/Navbar";
 import Footer from "@/components/common/Footer";
+import { AuthProvider } from "@/contexts/AuthContext";
+import { BookingProvider } from "@/contexts/BookingContext";
+import { ParkingProvider } from "@/contexts/ParkingContext";
 
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
       <body className={`${montserrat.variable} font-sans antialiased min-h-screen bg-neutral-warm text-text-black flex flex-col`}>
-        <Navbar />
-        <main className="flex-grow flex flex-col">
-          {children}
-        </main>
-        <Footer />
+        <AuthProvider>
+          <ParkingProvider>
+            <BookingProvider>
+              <Navbar />
+              <main className="flex-grow flex flex-col">
+                {children}
+              </main>
+              <Footer />
+            </BookingProvider>
+          </ParkingProvider>
+        </AuthProvider>
       </body>
     </html>
   );

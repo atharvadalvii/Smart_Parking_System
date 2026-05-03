@@ -2,12 +2,17 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import Card from '@/components/common/Card';
 import Button from '@/components/common/Button';
+import { useAuth } from '@/hooks/useAuth';
 
 export default function LoginPage() {
   const [formData, setFormData] = useState({ email: '', password: '' });
   const [errors, setErrors] = useState({});
+  const [serverError, setServerError] = useState('');
+  const { login } = useAuth();
+  const router = useRouter();
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -16,6 +21,7 @@ export default function LoginPage() {
     if (errors[name]) {
       setErrors((prev) => ({ ...prev, [name]: '' }));
     }
+    if (serverError) setServerError('');
   };
 
   const validate = () => {
@@ -35,8 +41,12 @@ export default function LoginPage() {
   const handleSubmit = (e) => {
     e.preventDefault();
     if (validate()) {
-      console.log('Login attempt with:', formData);
-      // Backend integration will go here
+      const result = login(formData.email, formData.password);
+      if (result.success) {
+        router.push('/dashboard');
+      } else {
+        setServerError(result.error);
+      }
     }
   };
 
@@ -49,6 +59,11 @@ export default function LoginPage() {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-5">
+          {serverError && (
+            <div className="bg-error/10 border border-error/30 text-error text-[14px] px-[16px] py-[12px] rounded-[8px] text-center font-medium">
+              {serverError}
+            </div>
+          )}
           <div>
             <label className="block text-[14px] font-semibold mb-[8px] text-text-black" htmlFor="email">
               Email Address
