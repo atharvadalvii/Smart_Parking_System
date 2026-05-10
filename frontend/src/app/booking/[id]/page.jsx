@@ -106,17 +106,29 @@ export default function BookingDetailPage() {
             <span className="text-[16px] font-semibold text-text-black">{booking.date}</span>
           </div>
           <div className="flex justify-between items-center py-[12px] border-b border-divider">
-            <span className="text-[14px] text-text-black-soft">Start Time</span>
+            <span className="text-[14px] text-text-black-soft">
+              {booking.status === 'completed' ? 'Entry Time' : 'Start Time'}
+            </span>
             <span className="text-[16px] font-semibold text-text-black">{booking.startTime}</span>
           </div>
+          {booking.status === 'completed' && booking.exitTime && (
+            <div className="flex justify-between items-center py-[12px] border-b border-divider">
+              <span className="text-[14px] text-text-black-soft">Exit Time</span>
+              <span className="text-[16px] font-semibold text-text-black">{booking.exitTime}</span>
+            </div>
+          )}
           <div className="flex justify-between items-center py-[12px] border-b border-divider">
-            <span className="text-[14px] text-text-black-soft">Duration</span>
+            <span className="text-[14px] text-text-black-soft">
+              {booking.status === 'completed' ? 'Actual Duration' : 'Estimated Duration'}
+            </span>
             <span className="text-[16px] font-semibold text-text-black">
               {booking.duration >= 1 ? `${booking.duration} hour${booking.duration > 1 ? 's' : ''}` : '30 min'}
             </span>
           </div>
           <div className="flex justify-between items-center py-[12px]">
-            <span className="text-[14px] text-text-black-soft">Estimated Cost</span>
+            <span className="text-[14px] text-text-black-soft">
+              {booking.status === 'completed' ? 'Total Cost' : 'Estimated Cost'}
+            </span>
             <span className="text-[20px] font-bold text-starbucks-green">${booking.cost.toFixed(2)}</span>
           </div>
         </div>
