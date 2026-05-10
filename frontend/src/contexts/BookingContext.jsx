@@ -18,6 +18,7 @@ const SEED_BOOKINGS = [
     duration: 2, // hours
     cost: 4.00,
     status: 'completed', // confirmed | active | completed | cancelled
+    exitTime: '11:00',
     createdAt: '2026-04-28T08:45:00Z',
   },
   {
@@ -30,6 +31,7 @@ const SEED_BOOKINGS = [
     duration: 3,
     cost: 6.00,
     status: 'completed',
+    exitTime: '17:00',
     createdAt: '2026-05-01T13:30:00Z',
   },
   {
@@ -150,6 +152,20 @@ export const BookingProvider = ({ children }) => {
     return { success: true };
   }, []);
 
+  /**
+   * Complete a booking (after payment is processed)
+   */
+  const completeBooking = useCallback((bookingId, finalData) => {
+    setBookings((prev) =>
+      prev.map((b) =>
+        b.id === bookingId
+          ? { ...b, status: 'completed', ...finalData }
+          : b
+      )
+    );
+    return { success: true };
+  }, []);
+
   const value = {
     bookings,
     hourlyRate: HOURLY_RATE,
@@ -157,6 +173,7 @@ export const BookingProvider = ({ children }) => {
     getBooking,
     getUserBookings,
     cancelBooking,
+    completeBooking,
   };
 
   return (

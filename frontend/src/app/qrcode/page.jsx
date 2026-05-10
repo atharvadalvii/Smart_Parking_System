@@ -72,15 +72,22 @@ export default function QRCodePage() {
           <h3 className="text-[16px] font-semibold text-text-black mb-[12px]">Active Bookings</h3>
           <div className="space-y-[10px]">
             {activeBookings.map((booking) => (
-              <Link key={booking.id} href={`/booking/${booking.id}`} className="block">
-                <div className="flex items-center justify-between bg-white rounded-[8px] px-[16px] py-[12px] border border-divider hover:border-green-accent/40 transition-colors">
-                  <div>
-                    <span className="text-[14px] font-semibold text-text-black">Slot {booking.slotName}</span>
-                    <span className="text-[13px] text-text-black-soft ml-[8px]">{booking.date} at {booking.startTime}</span>
+              <div key={booking.id} className="bg-white rounded-[8px] p-[16px] border border-divider">
+                <Link href={`/booking/${booking.id}`} className="block hover:opacity-80 transition-opacity mb-[12px]">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <span className="text-[14px] font-semibold text-text-black">Slot {booking.slotName}</span>
+                      <span className="text-[13px] text-text-black-soft ml-[8px]">{booking.date} at {booking.startTime}</span>
+                    </div>
+                    <span className="text-[13px] font-semibold text-green-accent">{booking.id} →</span>
                   </div>
-                  <span className="text-[13px] font-semibold text-green-accent">{booking.id} →</span>
-                </div>
-              </Link>
+                </Link>
+                <Link href={`/payment?bookingId=${booking.id}`} className="block">
+                  <Button variant="secondary" className="w-full !py-[10px] text-[14px] !bg-starbucks-green !text-white hover:!bg-starbucks-green/90">
+                    🚙 Simulate Exit & Pay
+                  </Button>
+                </Link>
+              </div>
             ))}
           </div>
         </Card>
