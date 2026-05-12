@@ -5,6 +5,9 @@ import jwt
 from services.firebase import get_db
 import config
 
+def _decode_token(token: str):
+    return jwt.decode(token, config.JWT_SECRET_KEY, algorithms=["HS256"])
+
 auth_bp = Blueprint("auth", __name__)
 
 
@@ -66,3 +69,31 @@ def login():
 
     token = _make_token(user_doc.id)
     return jsonify({"token": token, "user_id": user_doc.id}), 200
+
+
+@auth_bp.route("/me", methods=["GET"])
+def get_me():
+    raw = request.headers.get("Authorization", "")
+    token = raw.removeprefix("Bearer ").strip()
+    if not token:
+        return jsonify({"error": "No token provided"}), 401
+    try:
+        payload = _decode_token(token)
+    except jwt.ExpiredSignatureError:
+        return jsonify({"error": "Token expired"}), 401
+    except jwt.InvalidTokenError:
+        return jsonify({"error": "Invalid token"}), 401
+
+    user_id = payload["sub"]
+    db = get_db()
+    user_doc = db.collection("users").document(user_id).get()
+    if not user_doc.exists:
+        return jsonify({"error": "User not found"}), 404
+
+    user = user_doc.to_dict()
+    return jsonify({
+        "id": user_id,
+        "name": user["name"],
+        "email": user["email"],
+        "phone": user.get("phone", ""),
+    }), 200

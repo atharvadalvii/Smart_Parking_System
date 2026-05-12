@@ -87,6 +87,44 @@ def _handle_payment_succeeded(intent):
     db.collection("bookings").document(booking_id).update({"payment_status": "paid"})
 
 
+@payments_bp.route("/simulate/<booking_id>", methods=["POST"])
+def simulate_payment(booking_id):
+    """Demo-only: marks a booking as paid without going through Stripe."""
+    db = get_db()
+    booking_doc = db.collection("bookings").document(booking_id).get()
+    if not booking_doc.exists:
+        return jsonify({"error": "Booking not found"}), 404
+
+    booking = booking_doc.to_dict()
+    if booking.get("payment_status") == "paid":
+        return jsonify({"error": "Already paid"}), 409
+
+    fare = booking.get("fare_amount") or booking.get("estimated_cost") or 2.00
+
+    payment_ref = db.collection("payments").document()
+    payment_ref.set({
+        "booking_id": booking_id,
+        "stripe_payment_intent_id": f"sim_{payment_ref.id}",
+        "amount": int(fare * 100),
+        "currency": "aud",
+        "status": "succeeded",
+        "simulated": True,
+        "created_at": datetime.now(timezone.utc),
+    })
+
+    db.collection("bookings").document(booking_id).update({
+        "payment_status": "paid",
+        "status": "completed",
+    })
+
+    return jsonify({
+        "booking_id": booking_id,
+        "amount_aud": fare,
+        "payment_status": "paid",
+        "status": "completed",
+    }), 200
+
+
 @payments_bp.route("/<booking_id>", methods=["GET"])
 def get_payment_status(booking_id):
     db = get_db()

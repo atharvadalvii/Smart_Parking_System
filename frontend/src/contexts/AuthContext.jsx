@@ -1,134 +1,78 @@
 "use client";
 
 import React, { createContext, useState, useEffect, useCallback } from 'react';
+import { api } from '@/lib/api';
 
 export const AuthContext = createContext();
 
-// Pre-seeded test accounts for development
-const TEST_ACCOUNTS = [
-  {
-    id: 'user-001',
-    name: 'Test User',
-    email: 'test@example.com',
-    phone: '0412345678',
-    licensePlate: '1ABC123',
-    password: '123456',
-  },
-];
-
-const LOCAL_STORAGE_KEY = 'smartparking_auth';
-const USERS_STORAGE_KEY = 'smartparking_users';
+const TOKEN_KEY = 'smartparking_token';
+const USER_KEY = 'smartparking_auth';
 
 export const AuthProvider = ({ children }) => {
   const [currentUser, setCurrentUser] = useState(null);
-  const [isLoading, setIsLoading] = useState(true); // true until we check localStorage
+  const [isLoading, setIsLoading] = useState(true);
 
-  // On mount, restore user from localStorage
   useEffect(() => {
-    try {
-      const stored = localStorage.getItem(LOCAL_STORAGE_KEY);
-      if (stored) {
+    const token = localStorage.getItem(TOKEN_KEY);
+    const stored = localStorage.getItem(USER_KEY);
+    if (token && stored) {
+      try {
         setCurrentUser(JSON.parse(stored));
+      } catch {
+        localStorage.removeItem(USER_KEY);
       }
-    } catch {
-      // corrupted data — clear it
-      localStorage.removeItem(LOCAL_STORAGE_KEY);
     }
     setIsLoading(false);
   }, []);
 
-  // Helper: get all registered users (test accounts + any registered users)
-  const getAllUsers = useCallback(() => {
+  const login = useCallback(async (email, password) => {
     try {
-      const stored = localStorage.getItem(USERS_STORAGE_KEY);
-      const registeredUsers = stored ? JSON.parse(stored) : [];
-      return [...TEST_ACCOUNTS, ...registeredUsers];
-    } catch {
-      return [...TEST_ACCOUNTS];
+      const data = await api.post('/api/auth/login', { email, password });
+      localStorage.setItem(TOKEN_KEY, data.token);
+      const user = { id: data.user_id, email };
+      localStorage.setItem(USER_KEY, JSON.stringify(user));
+      setCurrentUser(user);
+      // fetch full profile in background to get name/phone
+      api.get('/api/auth/me').then(profile => {
+        const full = { id: data.user_id, name: profile.name, email: profile.email, phone: profile.phone };
+        localStorage.setItem(USER_KEY, JSON.stringify(full));
+        setCurrentUser(full);
+      }).catch(() => {});
+      return { success: true };
+    } catch (err) {
+      return { success: false, error: err.message };
     }
   }, []);
 
-  // Helper: persist user session
-  const persistUser = useCallback((user) => {
-    // Store user without password
-    const { password, ...safeUser } = user;
-    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(safeUser));
-    setCurrentUser(safeUser);
+  const register = useCallback(async (formData) => {
+    const { name, email, phone, password } = formData;
+    try {
+      const data = await api.post('/api/auth/register', { name, email, phone, password });
+      localStorage.setItem(TOKEN_KEY, data.token);
+      const user = { id: data.user_id, name, email, phone };
+      localStorage.setItem(USER_KEY, JSON.stringify(user));
+      setCurrentUser(user);
+      return { success: true };
+    } catch (err) {
+      return { success: false, error: err.message };
+    }
   }, []);
 
-  /**
-   * Login with email and password.
-   * Returns { success, error?, user? }
-   */
-  const login = useCallback((email, password) => {
-    const users = getAllUsers();
-    const user = users.find(
-      (u) => u.email.toLowerCase() === email.toLowerCase() && u.password === password
-    );
-
-    if (!user) {
-      return { success: false, error: 'Invalid email or password' };
-    }
-
-    persistUser(user);
-    return { success: true, user: currentUser };
-  }, [getAllUsers, persistUser, currentUser]);
-
-  /**
-   * Register a new user.
-   * Returns { success, error?, user? }
-   */
-  const register = useCallback((formData) => {
-    const { name, email, phone, licensePlate, password } = formData;
-    const users = getAllUsers();
-
-    // Check for duplicate email
-    if (users.some((u) => u.email.toLowerCase() === email.toLowerCase())) {
-      return { success: false, error: 'An account with this email already exists' };
-    }
-
-    const newUser = {
-      id: `user-${Date.now()}`,
-      name,
-      email,
-      phone,
-      licensePlate,
-      password,
-    };
-
-    // Save to registered users list
-    try {
-      const stored = localStorage.getItem(USERS_STORAGE_KEY);
-      const registeredUsers = stored ? JSON.parse(stored) : [];
-      registeredUsers.push(newUser);
-      localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(registeredUsers));
-    } catch {
-      return { success: false, error: 'Failed to save account data' };
-    }
-
-    persistUser(newUser);
-    return { success: true, user: currentUser };
-  }, [getAllUsers, persistUser, currentUser]);
-
-  /**
-   * Log out the current user.
-   */
   const logout = useCallback(() => {
-    localStorage.removeItem(LOCAL_STORAGE_KEY);
+    localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(USER_KEY);
     setCurrentUser(null);
   }, []);
 
-  const value = {
-    currentUser,
-    isAuthenticated: !!currentUser,
-    isLoading,
-    login,
-    register,
-    logout,
-  };
-
   return (
-    <AuthContext.Provider value={value}>
+    <AuthContext.Provider value={{
+      currentUser,
+      isAuthenticated: !!currentUser,
+      isLoading,
+      login,
+      register,
+      logout,
+    }}>
       {children}
     </AuthContext.Provider>
   );

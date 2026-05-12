@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Card from '@/components/common/Card';
@@ -28,9 +28,15 @@ export default function QRCodePage() {
     );
   }
 
-  const activeBookings = getUserBookings(currentUser.id).filter(
-    (b) => b.status === 'confirmed' || b.status === 'active'
-  );
+  const [activeBookings, setActiveBookings] = useState([]);
+
+  useEffect(() => {
+    if (isAuthenticated && currentUser) {
+      getUserBookings(currentUser.id).then(bookings =>
+        setActiveBookings(bookings.filter(b => b.status === 'confirmed' || b.status === 'active'))
+      );
+    }
+  }, [isAuthenticated, currentUser, getUserBookings]);
 
   return (
     <div className="flex-grow container mx-auto px-4 md:px-6 lg:px-10 max-w-[600px] py-[32px] md:py-[48px]">

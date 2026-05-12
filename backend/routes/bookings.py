@@ -41,6 +41,11 @@ def create_booking():
     if not all([user_id, slot_id]):
         return jsonify({"error": "user_id and slot_id are required"}), 400
 
+    date = data.get("date", "")
+    start_time = data.get("start_time", "")
+    duration = data.get("duration")
+    estimated_cost = data.get("estimated_cost")
+
     db = get_db()
     slot_doc = _slot_ref(db, slot_id).get()
     if not slot_doc.exists:
@@ -48,12 +53,18 @@ def create_booking():
     if slot_doc.to_dict().get("status") != "free":
         return jsonify({"error": "Slot is not free"}), 409
 
+    slot_number = slot_doc.to_dict().get("slot_number")
     booking_ref = db.collection("bookings").document()
     qr_code = _generate_qr_base64(booking_ref.id)
 
     booking_ref.set({
         "user_id": user_id,
         "slot_id": slot_id,
+        "slot_number": slot_number,
+        "date": date or None,
+        "start_time": start_time or None,
+        "duration": duration,
+        "estimated_cost": estimated_cost,
         "qr_code": qr_code,
         "entry_time": None,
         "exit_time": None,
@@ -67,7 +78,11 @@ def create_booking():
     return jsonify({
         "booking_id": booking_ref.id,
         "slot_id": slot_id,
-        "slot_number": slot_doc.to_dict().get("slot_number"),
+        "slot_number": slot_number,
+        "date": date or None,
+        "start_time": start_time or None,
+        "duration": duration,
+        "estimated_cost": estimated_cost,
         "status": "pending",
         "qr_code": qr_code,
     }), 201
