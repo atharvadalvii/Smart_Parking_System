@@ -8,6 +8,7 @@ import paho.mqtt.client as mqtt
 import config
 from services.firebase import get_db
 from services.sse_bus import broadcast
+from services.influx_client import write_slot_status, write_vehicle_count
 
 logger = logging.getLogger(__name__)
 
@@ -62,6 +63,7 @@ def _handle_slot(slot_num: str, data: dict):
 
     db.collection("parking_slots").document(slot_id).update({"status": status})
     broadcast({"slot_id": slot_id, "status": status})
+    write_slot_status(slot_id, status)
     logger.info("Slot %s: %s → %s", slot_id, current, status)
 
 
@@ -72,6 +74,7 @@ def _handle_gate_entry(_data: dict):
     doc = ref.get()
     current = doc.to_dict().get("count", 0) if doc.exists else 0
     ref.set({"count": current + 1})
+    write_vehicle_count(current + 1)
     logger.info("Gate entry — vehicle count: %d", current + 1)
 
 
@@ -83,6 +86,7 @@ def _handle_gate_exit(_data: dict):
     current = doc.to_dict().get("count", 0) if doc.exists else 0
     new_count = max(current - 1, 0)
     ref.set({"count": new_count})
+    write_vehicle_count(new_count)
     logger.info("Gate exit — vehicle count: %d", new_count)
 
 

@@ -5,6 +5,7 @@ from services.firebase import get_db
 from services.stripe_service import create_payment_intent, construct_webhook_event
 from services.fare import fare_to_cents
 from services.mqtt_client import publish
+from services.influx_client import write_fare
 
 payments_bp = Blueprint("payments", __name__)
 
@@ -89,6 +90,10 @@ def _handle_payment_succeeded(intent):
     fare = booking_doc.to_dict().get("fare_amount") if booking_doc.exists else None
     db.collection("bookings").document(booking_id).update({"payment_status": "paid"})
 
+    # Record fare in InfluxDB for Grafana
+    if fare is not None:
+        write_fare(booking_id, fare)
+
     # Tell RPi to open the exit gate servo
     publish("parking/gate/exit/open", {
         "booking_id": booking_id,
@@ -125,6 +130,9 @@ def simulate_payment(booking_id):
         "payment_status": "paid",
         "status": "completed",
     })
+
+    # Record fare in InfluxDB for Grafana
+    write_fare(booking_id, fare)
 
     # Tell RPi to open the exit gate servo
     publish("parking/gate/exit/open", {
