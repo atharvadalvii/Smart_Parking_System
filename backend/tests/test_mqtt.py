@@ -4,6 +4,7 @@ from unittest.mock import MagicMock, patch, call
 
 import pytest
 
+import services.mqtt_client as mqtt_module
 from services.mqtt_client import (
     _parse_payload,
     _handle_slot,
@@ -11,6 +12,7 @@ from services.mqtt_client import (
     _handle_gate_exit,
     _on_connect,
     _on_message,
+    publish,
     start_mqtt_client,
 )
 
@@ -174,6 +176,30 @@ def test_on_message_routes_gate_exit(mock_db):
     msg.payload = b"{}"
     _on_message(None, None, msg)
     mock_db.collection().document().set.assert_called_once_with({"count": 2})
+
+
+# ---------------------------------------------------------------------------
+# start_mqtt_client — skips when broker not configured
+# ---------------------------------------------------------------------------
+
+# ---------------------------------------------------------------------------
+# publish
+# ---------------------------------------------------------------------------
+
+def test_publish_sends_json_to_broker():
+    mock_client = MagicMock()
+    mqtt_module._client = mock_client
+    publish("parking/gate/entry/open", {"booking_id": "abc", "slot_id": "S1"})
+    mock_client.publish.assert_called_once_with(
+        "parking/gate/entry/open",
+        json.dumps({"booking_id": "abc", "slot_id": "S1"}),
+    )
+    mqtt_module._client = None
+
+
+def test_publish_silently_skips_when_no_client():
+    mqtt_module._client = None
+    publish("parking/gate/exit/open", {"booking_id": "abc"})  # should not raise
 
 
 # ---------------------------------------------------------------------------

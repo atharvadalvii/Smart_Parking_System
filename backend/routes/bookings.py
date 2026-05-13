@@ -2,6 +2,7 @@ from flask import Blueprint, request, jsonify
 from datetime import datetime, timezone
 from services.firebase import get_db
 from services.fare import calculate_fare
+from services.mqtt_client import publish
 import qrcode
 import io
 import base64
@@ -121,6 +122,13 @@ def record_entry(booking_id):
     entry_time = datetime.now(timezone.utc)
     ref.update({"entry_time": entry_time, "status": "active"})
     _slot_ref(db, booking["slot_id"]).update({"status": "occupied"})
+
+    # Tell RPi to open the entry gate servo
+    publish("parking/gate/entry/open", {
+        "booking_id": booking_id,
+        "slot_id": booking["slot_id"],
+        "slot_number": booking.get("slot_number"),
+    })
 
     return jsonify({
         "booking_id": booking_id,

@@ -116,6 +116,28 @@ def _on_message(_client, _userdata, msg):
 
 
 # ---------------------------------------------------------------------------
+# Publisher — backend → RPi
+# ---------------------------------------------------------------------------
+
+_client = None  # shared client instance for publishing
+
+
+def publish(topic: str, payload: dict):
+    """Publish a JSON message to the broker.
+
+    Topics the RPi listens for:
+      parking/gate/entry/open  — open entry gate servo after QR verified
+      parking/gate/exit/open   — open exit gate servo after payment confirmed
+      parking/path             — LED path sequence after entry (for Dijkstra)
+    """
+    if _client is None:
+        logger.debug("MQTT not connected — skipping publish to %s", topic)
+        return
+    _client.publish(topic, json.dumps(payload))
+    logger.info("MQTT → %s : %s", topic, payload)
+
+
+# ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
 
@@ -138,6 +160,8 @@ def start_mqtt_client():
 
     try:
         client.connect(config.MQTT_BROKER, config.MQTT_PORT, keepalive=60)
+        global _client
+        _client = client
         thread = threading.Thread(target=client.loop_forever, daemon=True)
         thread.start()
         logger.info("MQTT client started → %s:%d", config.MQTT_BROKER, config.MQTT_PORT)

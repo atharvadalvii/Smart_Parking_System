@@ -4,6 +4,7 @@ import stripe
 from services.firebase import get_db
 from services.stripe_service import create_payment_intent, construct_webhook_event
 from services.fare import fare_to_cents
+from services.mqtt_client import publish
 
 payments_bp = Blueprint("payments", __name__)
 
@@ -84,7 +85,15 @@ def _handle_payment_succeeded(intent):
         p.reference.update({"status": "succeeded"})
 
     # Mark booking as paid
+    booking_doc = db.collection("bookings").document(booking_id).get()
+    fare = booking_doc.to_dict().get("fare_amount") if booking_doc.exists else None
     db.collection("bookings").document(booking_id).update({"payment_status": "paid"})
+
+    # Tell RPi to open the exit gate servo
+    publish("parking/gate/exit/open", {
+        "booking_id": booking_id,
+        "amount_aud": fare,
+    })
 
 
 @payments_bp.route("/simulate/<booking_id>", methods=["POST"])
@@ -115,6 +124,12 @@ def simulate_payment(booking_id):
     db.collection("bookings").document(booking_id).update({
         "payment_status": "paid",
         "status": "completed",
+    })
+
+    # Tell RPi to open the exit gate servo
+    publish("parking/gate/exit/open", {
+        "booking_id": booking_id,
+        "amount_aud": fare,
     })
 
     return jsonify({
