@@ -5,6 +5,8 @@ from routes.auth import auth_bp
 from routes.slots import slots_bp
 from routes.bookings import bookings_bp
 from routes.payments import payments_bp
+from routes.path import path_bp
+from routes.events import events_bp
 
 def create_app():
     app = Flask(__name__)
@@ -19,6 +21,8 @@ def create_app():
     app.register_blueprint(slots_bp, url_prefix="/api/slots")
     app.register_blueprint(bookings_bp, url_prefix="/api/bookings")
     app.register_blueprint(payments_bp, url_prefix="/api/payments")
+    app.register_blueprint(path_bp, url_prefix="/api/path")
+    app.register_blueprint(events_bp, url_prefix="/api/events")
 
     return app
 

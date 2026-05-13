@@ -3,9 +3,13 @@ from datetime import datetime, timezone
 from services.firebase import get_db
 from services.fare import calculate_fare
 from services.mqtt_client import publish
+from services.graph import shortest_path
+import logging
 import qrcode
 import io
 import base64
+
+logger = logging.getLogger(__name__)
 
 bookings_bp = Blueprint("bookings", __name__)
 
@@ -129,6 +133,13 @@ def record_entry(booking_id):
         "slot_id": booking["slot_id"],
         "slot_number": booking.get("slot_number"),
     })
+
+    # Publish Dijkstra path so RPi can light up LED guidance
+    try:
+        path = shortest_path(booking["slot_id"])
+        publish("parking/path", {"slot_id": booking["slot_id"], "path": path})
+    except Exception as exc:
+        logger.warning("Could not compute path for slot %s: %s", booking["slot_id"], exc)
 
     return jsonify({
         "booking_id": booking_id,

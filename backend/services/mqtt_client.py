@@ -7,6 +7,7 @@ import paho.mqtt.client as mqtt
 
 import config
 from services.firebase import get_db
+from services.sse_bus import broadcast
 
 logger = logging.getLogger(__name__)
 
@@ -60,6 +61,7 @@ def _handle_slot(slot_num: str, data: dict):
         return
 
     db.collection("parking_slots").document(slot_id).update({"status": status})
+    broadcast({"slot_id": slot_id, "status": status})
     logger.info("Slot %s: %s → %s", slot_id, current, status)
 
 
