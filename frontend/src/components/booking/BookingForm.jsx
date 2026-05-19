@@ -3,6 +3,99 @@
 import React, { useState, useMemo } from 'react';
 import Button from '@/components/common/Button';
 
+const HOURS = Array.from({ length: 24 }, (_, i) => i);
+const MINUTES = [0, 15, 30, 45];
+
+const TimePicker = ({ value, onChange, isToday }) => {
+  const [h, m] = value.split(':').map(Number);
+  const now = new Date();
+
+  const isHourDisabled = (hour) =>
+    isToday && (hour < now.getHours() || (hour === now.getHours() && now.getMinutes() >= 45));
+
+  const isMinuteDisabled = (hour, minute) =>
+    isToday && hour === now.getHours() && minute <= now.getMinutes();
+
+  const setHour = (hour) => {
+    // If selected minute becomes invalid with new hour, bump to next valid minute
+    let newMin = m;
+    if (isToday && hour === now.getHours()) {
+      const validMins = MINUTES.filter(min => min > now.getMinutes());
+      if (validMins.length) newMin = validMins[0];
+    }
+    onChange(`${String(hour).padStart(2, '0')}:${String(newMin).padStart(2, '0')}`);
+  };
+
+  const setMinute = (minute) => {
+    onChange(`${String(h).padStart(2, '0')}:${String(minute).padStart(2, '0')}`);
+  };
+
+  return (
+    <div className="border border-[#d6dbde] rounded-[4px] p-[12px] bg-white space-y-[12px]">
+      {/* Hours */}
+      <div>
+        <p className="text-[11px] font-semibold text-text-black-soft uppercase tracking-wider mb-[8px]">Hour</p>
+        <div className="grid grid-cols-8 gap-[4px]">
+          {HOURS.map(hour => {
+            const disabled = isHourDisabled(hour);
+            const selected = hour === h;
+            return (
+              <button
+                key={hour}
+                type="button"
+                disabled={disabled}
+                onClick={() => setHour(hour)}
+                className={`py-[6px] rounded-[4px] text-[13px] font-medium transition-colors
+                  ${selected
+                    ? 'bg-green-accent text-white'
+                    : disabled
+                    ? 'text-[#ccc] cursor-not-allowed'
+                    : 'bg-neutral-warm text-text-black hover:bg-green-accent/10'
+                  }`}
+              >
+                {String(hour).padStart(2, '0')}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Minutes */}
+      <div>
+        <p className="text-[11px] font-semibold text-text-black-soft uppercase tracking-wider mb-[8px]">Minute</p>
+        <div className="grid grid-cols-4 gap-[6px]">
+          {MINUTES.map(minute => {
+            const disabled = isMinuteDisabled(h, minute);
+            const selected = minute === m;
+            return (
+              <button
+                key={minute}
+                type="button"
+                disabled={disabled}
+                onClick={() => setMinute(minute)}
+                className={`py-[8px] rounded-[4px] text-[14px] font-semibold transition-colors
+                  ${selected
+                    ? 'bg-green-accent text-white'
+                    : disabled
+                    ? 'text-[#ccc] cursor-not-allowed bg-neutral-warm'
+                    : 'bg-neutral-warm text-text-black hover:bg-green-accent/10'
+                  }`}
+              >
+                :{String(minute).padStart(2, '0')}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Selected display */}
+      <div className="text-center text-[22px] font-bold text-green-accent tracking-widest">
+        {String(h).padStart(2, '0')}:{String(m).padStart(2, '0')}
+      </div>
+    </div>
+  );
+};
+
 const DURATION_OPTIONS = [
   { value: 0.5, label: '30 minutes' },
   { value: 1, label: '1 hour' },
@@ -116,16 +209,16 @@ const BookingForm = ({ selectedSlot, hourlyRate = 2, onSubmit, onCancel }) => {
 
       {/* Start time */}
       <div>
-        <label className="block text-[14px] font-semibold mb-[8px] text-text-black" htmlFor="startTime">
+        <label className="block text-[14px] font-semibold mb-[8px] text-text-black">
           Start Time
         </label>
-        <input
-          id="startTime"
-          name="startTime"
-          type="time"
+        <TimePicker
           value={formData.startTime}
-          onChange={handleChange}
-          className={`${inputStyles} ${errors.startTime ? errorInputStyles : normalInputStyles}`}
+          isToday={formData.date === todayStr}
+          onChange={(time) => {
+            setFormData(prev => ({ ...prev, startTime: time }));
+            setErrors(prev => ({ ...prev, startTime: '' }));
+          }}
         />
         {errors.startTime && <p className="mt-[4px] text-[13px] text-error">{errors.startTime}</p>}
       </div>
