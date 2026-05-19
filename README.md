@@ -84,10 +84,10 @@ MQTT_PORT=1883
 MQTT_USERNAME=
 MQTT_PASSWORD=
 
-# Optional — leave blank to disable InfluxDB metrics
+# InfluxDB metrics → Grafana (see setup below — leave blank to disable)
 INFLUXDB_URL=http://localhost:8086
-INFLUXDB_TOKEN=
-INFLUXDB_ORG=
+INFLUXDB_TOKEN=<your-influxdb-token>
+INFLUXDB_ORG=parking
 INFLUXDB_BUCKET=parking
 
 # Feature flags
@@ -247,6 +247,72 @@ To reset the database to a clean state:
 ```bash
 cd backend && .venv/bin/python seed.py
 ```
+
+---
+
+## Metrics — InfluxDB + Grafana
+
+The backend writes three measurements to InfluxDB whenever events occur:
+
+| Measurement | Trigger | Fields |
+|-------------|---------|--------|
+| `parking_slots` | Sensor update | `slot_id` (tag), `status`, `occupied` |
+| `vehicle_count` | Gate entry / exit | `count` |
+| `parking_fares` | Payment completed | `booking_id` (tag), `fare_aud` |
+
+### macOS setup (one-time)
+
+```bash
+# Install
+brew install influxdb@2 influxdb-cli grafana
+
+# Start services (auto-restart on login)
+brew services start influxdb@2
+brew services start grafana
+
+# Initialise InfluxDB (org=parking, bucket=parking)
+influx setup \
+  --username admin \
+  --password <choose-a-password> \
+  --org parking \
+  --bucket parking \
+  --retention 0 \
+  --force
+
+# Copy the generated token into backend/.env
+cat ~/.influxdbv2/configs   # token= line
+```
+
+Grafana defaults to port 3000, which conflicts with the Next.js frontend. Change it first:
+
+```bash
+# In /opt/homebrew/etc/grafana/grafana.ini, find and uncomment:
+http_port = 4000
+# then restart:
+brew services restart grafana
+```
+
+### Configure Grafana
+
+1. Open **http://localhost:4000** (admin / admin)
+2. **Connections → Add data source → InfluxDB**
+   - Query language: **Flux**
+   - URL: `http://localhost:8086`
+   - Organisation: `parking`
+   - Token: (paste from `~/.influxdbv2/configs`)
+   - Default bucket: `parking`
+3. Import or create a dashboard — the pre-built one is available at **http://localhost:4000/d/smart-parking** once the backend has written at least one data point.
+
+### Fill in `backend/.env`
+
+```env
+INFLUXDB_URL=http://localhost:8086
+INFLUXDB_TOKEN=<paste token here>
+INFLUXDB_ORG=parking
+INFLUXDB_BUCKET=parking
+```
+
+Restart the backend — metrics will flow automatically with every sensor update, gate event, and payment.
 
 ---
 
