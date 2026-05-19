@@ -10,7 +10,8 @@ from routes.events import events_bp
 
 def create_app():
     app = Flask(__name__)
-    CORS(app, origins=["http://localhost:3000"])
+    allowed_origins = os.environ.get("CORS_ORIGINS", "http://localhost:3000").split(",")
+    CORS(app, origins=allowed_origins)
 
     # Start MQTT subscriber only in the main process (not the Flask reloader child)
     if not app.debug or os.environ.get("WERKZEUG_RUN_MAIN") == "true":
@@ -29,4 +30,4 @@ def create_app():
 if __name__ == "__main__":
     app = create_app()
     port = int(os.environ.get("PORT", 5001))
-    app.run(debug=True, port=port)
+    app.run(debug=True, port=port, threaded=True)

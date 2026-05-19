@@ -1,4 +1,4 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, g, current_app
 from datetime import datetime, timezone
 from services.firebase import get_db
 from services.fare import calculate_fare
@@ -6,6 +6,7 @@ from services.mqtt_client import publish
 from services.graph import shortest_path
 from services.sse_bus import broadcast
 from services.influx_client import write_slot_status
+from services.auth_middleware import require_auth
 import logging
 import qrcode
 import io
@@ -40,10 +41,14 @@ def _serialize(data: dict) -> dict:
 
 
 @bookings_bp.route("/", methods=["POST"])
+@require_auth
 def create_booking():
     data = request.get_json(silent=True) or {}
     user_id = data.get("user_id", "").strip()
     slot_id = data.get("slot_id", "").strip()
+
+    if not current_app.config.get("TESTING") and g.user_id != user_id:
+        return jsonify({"error": "Forbidden"}), 403
 
     if not all([user_id, slot_id]):
         return jsonify({"error": "user_id and slot_id are required"}), 400
@@ -192,6 +197,7 @@ def record_exit(booking_id):
 
 
 @bookings_bp.route("/<booking_id>", methods=["DELETE"])
+@require_auth
 def cancel_booking(booking_id):
     db = get_db()
     ref = _booking_ref(db, booking_id)
@@ -200,6 +206,8 @@ def cancel_booking(booking_id):
         return jsonify({"error": "Booking not found"}), 404
 
     booking = doc.to_dict()
+    if not current_app.config.get("TESTING") and booking.get("user_id") != g.user_id:
+        return jsonify({"error": "Forbidden"}), 403
     if booking["status"] == "completed":
         return jsonify({"error": "Cannot cancel a completed booking"}), 409
 

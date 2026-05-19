@@ -5,9 +5,9 @@ Usage: python seed.py
 from services.firebase import get_db
 
 SLOTS = [
-    {"id": "S1", "slot_number": "Slot 1", "status": "free", "vehicle_plate": None},
-    {"id": "S2", "slot_number": "Slot 2", "status": "free", "vehicle_plate": None},
-    {"id": "S3", "slot_number": "Slot 3", "status": "free", "vehicle_plate": None},
+    {"id": "S1", "slot_number": "1", "status": "free", "vehicle_plate": None},
+    {"id": "S2", "slot_number": "2", "status": "free", "vehicle_plate": None},
+    {"id": "S3", "slot_number": "3", "status": "free", "vehicle_plate": None},
 ]
 
 def seed():

@@ -4,7 +4,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # ── Backend ────────────────────────────────────────────────────────────────
-BACKEND_URL = os.environ.get("BACKEND_URL", "http://localhost:5000")
+BACKEND_URL = os.environ.get("BACKEND_URL", "http://localhost:5001")
 
 # ── MQTT ───────────────────────────────────────────────────────────────────
 MQTT_BROKER   = os.environ.get("MQTT_BROKER", "localhost")

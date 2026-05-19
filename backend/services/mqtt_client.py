@@ -56,6 +56,10 @@ def _handle_slot(slot_num: str, data: dict):
 
     current = doc.to_dict().get("status")
 
+    # Don't write if status hasn't changed (avoid redundant Firestore writes and SSE noise)
+    if current == status:
+        return
+
     # Don't let a sensor "free" reading erase a pending booking reservation
     if current == "reserved" and status == "free":
         logger.debug("Slot %s is reserved — ignoring sensor 'free' reading", slot_id)
@@ -73,9 +77,11 @@ def _handle_gate_entry(_data: dict):
     ref = db.collection("system").document("vehicle_count")
     doc = ref.get()
     current = doc.to_dict().get("count", 0) if doc.exists else 0
-    ref.set({"count": current + 1})
-    write_vehicle_count(current + 1)
-    logger.info("Gate entry — vehicle count: %d", current + 1)
+    new_count = current + 1
+    ref.set({"count": new_count})
+    write_vehicle_count(new_count)
+    broadcast({"vehicle_count": new_count})
+    logger.info("Gate entry — vehicle count: %d", new_count)
 
 
 def _handle_gate_exit(_data: dict):
@@ -87,6 +93,7 @@ def _handle_gate_exit(_data: dict):
     new_count = max(current - 1, 0)
     ref.set({"count": new_count})
     write_vehicle_count(new_count)
+    broadcast({"vehicle_count": new_count})
     logger.info("Gate exit — vehicle count: %d", new_count)
 
 
@@ -102,6 +109,11 @@ def _on_connect(client, _userdata, _flags, rc):
         logger.info("MQTT connected — subscribed to parking/# topics")
     else:
         logger.error("MQTT connection refused (rc=%d)", rc)
+
+
+def _on_disconnect(client, _userdata, rc):
+    if rc != 0:
+        logger.warning("MQTT unexpected disconnect (rc=%d) — will reconnect automatically", rc)
 
 
 def _on_message(_client, _userdata, msg):
@@ -162,7 +174,9 @@ def start_mqtt_client():
         client.username_pw_set(config.MQTT_USERNAME, config.MQTT_PASSWORD)
 
     client.on_connect = _on_connect
+    client.on_disconnect = _on_disconnect
     client.on_message = _on_message
+    client.reconnect_delay_set(min_delay=1, max_delay=60)
 
     try:
         client.connect(config.MQTT_BROKER, config.MQTT_PORT, keepalive=60)

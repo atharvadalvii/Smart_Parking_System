@@ -1,6 +1,6 @@
 "use client";
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useParkingData } from '@/hooks/useParkingData';
 import ParkingMap from '@/components/parking/ParkingMap';
@@ -8,10 +8,26 @@ import SlotIndicator from '@/components/parking/SlotIndicator';
 import VehicleCounter from '@/components/parking/VehicleCounter';
 import GateStatus from '@/components/parking/GateStatus';
 import Card from '@/components/common/Card';
+import { useAuth } from '@/hooks/useAuth';
 
 export default function DashboardPage() {
   const { slots, gates, vehicleCount, totalSlots, isConnected } = useParkingData();
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
   const router = useRouter();
+
+  useEffect(() => {
+    if (!authLoading && !isAuthenticated) {
+      router.push('/login');
+    }
+  }, [authLoading, isAuthenticated, router]);
+
+  if (authLoading || !isAuthenticated) {
+    return (
+      <div className="flex-grow flex items-center justify-center">
+        <div className="text-text-black-soft text-[16px]">Loading...</div>
+      </div>
+    );
+  }
 
   const handleSlotClick = (slotId) => {
     const slot = slots?.find(s => s.id === slotId);

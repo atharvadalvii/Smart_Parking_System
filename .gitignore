@@ -1,0 +1,30 @@
+# ── Secrets & credentials ────────────────────────────────────────────────────
+.env
+.env.local
+.env.*.local
+*.pem
+*service_account*.json
+*credentials*.json
+
+# ── Python ───────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+dist/
+build/
+
+# ── Node / Next.js ───────────────────────────────────────────────────────────
+node_modules/
+.next/
+out/
+npm-debug.log*
+yarn-error.log*
+
+# ── OS / editors ─────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp

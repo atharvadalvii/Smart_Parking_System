@@ -36,7 +36,7 @@ export default function HistoryPage() {
         setBookingsLoading(false);
       });
     }
-  }, [isAuthenticated, currentUser, getUserBookings]);
+  }, [isAuthenticated, currentUser]);
 
   if (authLoading || !isAuthenticated) {
     return (

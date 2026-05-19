@@ -55,7 +55,7 @@ function PaymentForm() {
       setBillingDetails({
         exitTime: exitTimeStr,
         duration: actualDuration,
-        cost: booking.cost || parseFloat((actualDuration * 2).toFixed(2)),
+        cost: booking.cost || parseFloat((actualDuration * 3).toFixed(2)),
       });
     }
   }, [booking]);

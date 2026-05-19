@@ -3,7 +3,7 @@ import Card from '../common/Card';
 
 const VehicleCounter = ({ vehicleCount, totalSlots }) => {
   // Simple percentage calculation
-  const percentage = totalSlots > 0 ? (vehicleCount / totalSlots) * 100 : 0;
+  const percentage = totalSlots > 0 ? Math.min((vehicleCount / totalSlots) * 100, 100) : 0;
 
   return (
     <Card elevated className="w-full bg-house-green text-white">
