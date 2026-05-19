@@ -1,10 +1,11 @@
 "use client";
 
 import React, { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import Card from '@/components/common/Card';
 import Button from '@/components/common/Button';
+import Toast from '@/components/common/Toast';
 import UserQRCode from '@/components/qrcode/UserQRCode';
 import { useAuth } from '@/hooks/useAuth';
 import { useBooking } from '@/hooks/useBooking';
@@ -13,12 +14,20 @@ export default function QRCodePage() {
   const { currentUser, isAuthenticated, isLoading: authLoading } = useAuth();
   const { getUserBookings } = useBooking();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const [toast, setToast] = useState(null);
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
       router.push('/login');
     }
   }, [authLoading, isAuthenticated, router]);
+
+  useEffect(() => {
+    if (searchParams.get('bookingId')) {
+      setToast('Booking confirmed!');
+    }
+  }, [searchParams]);
 
   if (authLoading || !isAuthenticated) {
     return (
@@ -40,6 +49,7 @@ export default function QRCodePage() {
 
   return (
     <div className="flex-grow container mx-auto px-4 md:px-6 lg:px-10 max-w-[600px] py-[32px] md:py-[48px]">
+      {toast && <Toast message={toast} onClose={() => setToast(null)} />}
       {/* Header */}
       <div className="text-center mb-[32px]">
         <h1 className="text-[24px] md:text-[32px] font-semibold text-starbucks-green mb-[4px]">
