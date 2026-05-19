@@ -60,10 +60,10 @@ export default function RegisterPage() {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (validate()) {
-      const result = register(formData);
+      const result = await register(formData);
       if (result.success) {
         router.push('/dashboard');
       } else {

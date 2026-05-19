@@ -38,10 +38,10 @@ export default function LoginPage() {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (validate()) {
-      const result = login(formData.email, formData.password);
+      const result = await login(formData.email, formData.password);
       if (result.success) {
         router.push('/dashboard');
       } else {

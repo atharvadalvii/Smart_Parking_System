@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Card from '@/components/common/Card';
@@ -20,8 +20,8 @@ export default function BookingDetailPage() {
   const router = useRouter();
   const { isAuthenticated, isLoading: authLoading } = useAuth();
   const { getBooking, cancelBooking } = useBooking();
-
-  const booking = getBooking(params.id);
+  const [booking, setBooking] = useState(null);
+  const [bookingLoading, setBookingLoading] = useState(true);
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -29,7 +29,16 @@ export default function BookingDetailPage() {
     }
   }, [authLoading, isAuthenticated, router]);
 
-  if (authLoading) {
+  useEffect(() => {
+    if (isAuthenticated && params.id) {
+      getBooking(params.id).then(data => {
+        setBooking(data);
+        setBookingLoading(false);
+      });
+    }
+  }, [isAuthenticated, params.id, getBooking]);
+
+  if (authLoading || bookingLoading) {
     return (
       <div className="flex-grow flex items-center justify-center">
         <div className="text-text-black-soft text-[16px]">Loading...</div>
@@ -57,9 +66,10 @@ export default function BookingDetailPage() {
   const statusStyle = STATUS_STYLES[booking.status] || STATUS_STYLES.confirmed;
   const canCancel = booking.status === 'confirmed' || booking.status === 'active';
 
-  const handleCancel = () => {
+  const handleCancel = async () => {
     if (window.confirm('Are you sure you want to cancel this booking?')) {
-      cancelBooking(booking.id);
+      await cancelBooking(booking.id);
+      router.push('/history');
     }
   };
 

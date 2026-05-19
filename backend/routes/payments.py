@@ -4,6 +4,8 @@ import stripe
 from services.firebase import get_db
 from services.stripe_service import create_payment_intent, construct_webhook_event
 from services.fare import fare_to_cents
+from services.mqtt_client import publish
+from services.influx_client import write_fare
 
 payments_bp = Blueprint("payments", __name__)
 
@@ -84,7 +86,66 @@ def _handle_payment_succeeded(intent):
         p.reference.update({"status": "succeeded"})
 
     # Mark booking as paid
+    booking_doc = db.collection("bookings").document(booking_id).get()
+    fare = booking_doc.to_dict().get("fare_amount") if booking_doc.exists else None
     db.collection("bookings").document(booking_id).update({"payment_status": "paid"})
+
+    # Record fare in InfluxDB for Grafana
+    if fare is not None:
+        write_fare(booking_id, fare)
+
+    # Tell RPi to open the exit gate servo
+    publish("parking/gate/exit/open", {
+        "booking_id": booking_id,
+        "amount_aud": fare,
+    })
+
+
+@payments_bp.route("/simulate/<booking_id>", methods=["POST"])
+def simulate_payment(booking_id):
+    """Demo-only: marks a booking as paid without going through Stripe."""
+    db = get_db()
+    booking_doc = db.collection("bookings").document(booking_id).get()
+    if not booking_doc.exists:
+        return jsonify({"error": "Booking not found"}), 404
+
+    booking = booking_doc.to_dict()
+    if booking.get("payment_status") == "paid":
+        return jsonify({"error": "Already paid"}), 409
+
+    fare = booking.get("fare_amount") or booking.get("estimated_cost") or 2.00
+
+    payment_ref = db.collection("payments").document()
+    payment_ref.set({
+        "booking_id": booking_id,
+        "stripe_payment_intent_id": f"sim_{payment_ref.id}",
+        "amount": int(fare * 100),
+        "currency": "aud",
+        "status": "succeeded",
+        "simulated": True,
+        "created_at": datetime.now(timezone.utc),
+    })
+
+    db.collection("bookings").document(booking_id).update({
+        "payment_status": "paid",
+        "status": "completed",
+    })
+
+    # Record fare in InfluxDB for Grafana
+    write_fare(booking_id, fare)
+
+    # Tell RPi to open the exit gate servo
+    publish("parking/gate/exit/open", {
+        "booking_id": booking_id,
+        "amount_aud": fare,
+    })
+
+    return jsonify({
+        "booking_id": booking_id,
+        "amount_aud": fare,
+        "payment_status": "paid",
+        "status": "completed",
+    }), 200
 
 
 @payments_bp.route("/<booking_id>", methods=["GET"])

@@ -20,12 +20,23 @@ export default function HistoryPage() {
   const { currentUser, isAuthenticated, isLoading: authLoading } = useAuth();
   const { getUserBookings } = useBooking();
   const [filter, setFilter] = useState('all');
+  const [allBookings, setAllBookings] = useState([]);
+  const [bookingsLoading, setBookingsLoading] = useState(true);
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
       router.push('/login');
     }
   }, [authLoading, isAuthenticated, router]);
+
+  useEffect(() => {
+    if (isAuthenticated && currentUser) {
+      getUserBookings(currentUser.id).then(data => {
+        setAllBookings(data);
+        setBookingsLoading(false);
+      });
+    }
+  }, [isAuthenticated, currentUser, getUserBookings]);
 
   if (authLoading || !isAuthenticated) {
     return (
@@ -34,8 +45,6 @@ export default function HistoryPage() {
       </div>
     );
   }
-
-  const allBookings = getUserBookings(currentUser.id);
   const filteredBookings = filter === 'all'
     ? allBookings
     : allBookings.filter(b => b.status === filter);
@@ -58,6 +67,9 @@ export default function HistoryPage() {
 
       <Card elevated className="mb-[24px] overflow-hidden !p-0">
         {/* Filters */}
+        {bookingsLoading && (
+          <div className="p-[24px] text-center text-text-black-soft text-[14px]">Loading bookings...</div>
+        )}
         <div className="flex gap-[8px] p-[16px] border-b border-divider overflow-x-auto">
           {['all', 'confirmed', 'active', 'completed', 'cancelled'].map(f => (
             <button

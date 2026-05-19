@@ -16,6 +16,9 @@ def mock_db():
         patch("routes.slots.get_db", return_value=db),
         patch("routes.bookings.get_db", return_value=db),
         patch("routes.payments.get_db", return_value=db),
+        patch("services.mqtt_client.get_db", return_value=db),
+        patch("routes.bookings.publish"),
+        patch("routes.payments.publish"),
     ):
         yield db
 

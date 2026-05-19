@@ -1,183 +1,98 @@
 "use client";
 
-import React, { createContext, useState, useCallback, useEffect } from 'react';
+import React, { createContext, useCallback } from 'react';
+import { api } from '@/lib/api';
 
 export const BookingContext = createContext();
 
-const LOCAL_STORAGE_KEY = 'smartparking_bookings';
-
-// Pre-seeded mock booking history for the test user
-const SEED_BOOKINGS = [
-  {
-    id: 'BK-001',
-    userId: 'user-001',
-    slotId: 2,
-    slotName: 'A2',
-    date: '2026-04-28',
-    startTime: '09:00',
-    duration: 2, // hours
-    cost: 4.00,
-    status: 'completed', // confirmed | active | completed | cancelled
-    exitTime: '11:00',
-    createdAt: '2026-04-28T08:45:00Z',
-  },
-  {
-    id: 'BK-002',
-    userId: 'user-001',
-    slotId: 1,
-    slotName: 'A1',
-    date: '2026-05-01',
-    startTime: '14:00',
-    duration: 3,
-    cost: 6.00,
-    status: 'completed',
-    exitTime: '17:00',
-    createdAt: '2026-05-01T13:30:00Z',
-  },
-  {
-    id: 'BK-003',
-    userId: 'user-001',
-    slotId: 3,
-    slotName: 'A3',
-    date: '2026-05-03',
-    startTime: '10:00',
-    duration: 1,
-    cost: 2.00,
-    status: 'cancelled',
-    createdAt: '2026-05-03T09:00:00Z',
-  },
-];
-
-const HOURLY_RATE = 2; // $2 per hour
+function normalizeBooking(b) {
+  const id = b.id || b.booking_id;
+  const exitIso = b.exit_time;
+  const entryIso = b.entry_time;
+  return {
+    id,
+    userId: b.user_id,
+    slotId: b.slot_id,
+    slotName: b.slot_number || b.slot_id || '',
+    date: b.date || '',
+    startTime: b.start_time || (entryIso ? new Date(entryIso).toTimeString().slice(0, 5) : ''),
+    duration: b.duration || 0,
+    cost: b.fare_amount ?? b.estimated_cost ?? 0,
+    status: b.status === 'pending' ? 'confirmed' : b.status,
+    exitTime: exitIso ? new Date(exitIso).toTimeString().slice(0, 5) : null,
+    entryTime: entryIso,
+    fareAmount: b.fare_amount,
+    paymentStatus: b.payment_status,
+    qrCode: b.qr_code,
+    createdAt: b.created_at,
+  };
+}
 
 export const BookingProvider = ({ children }) => {
-  const [bookings, setBookings] = useState([]);
-  const [isLoaded, setIsLoaded] = useState(false);
-
-  // On mount, load bookings from localStorage (or seed data)
-  useEffect(() => {
+  const createBooking = useCallback(async (userId, slotId, _slotName, date, startTime, duration) => {
+    const estimatedCost = parseFloat((duration * 2).toFixed(2));
     try {
-      const stored = localStorage.getItem(LOCAL_STORAGE_KEY);
-      if (stored) {
-        setBookings(JSON.parse(stored));
-      } else {
-        // First time — use seed data
-        setBookings(SEED_BOOKINGS);
-        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(SEED_BOOKINGS));
-      }
+      const data = await api.post('/api/bookings/', {
+        user_id: userId,
+        slot_id: slotId,
+        date,
+        start_time: startTime,
+        duration,
+        estimated_cost: estimatedCost,
+      });
+      return { success: true, bookingId: data.booking_id };
+    } catch (err) {
+      return { success: false, error: err.message };
+    }
+  }, []);
+
+  const getBooking = useCallback(async (bookingId) => {
+    try {
+      const data = await api.get(`/api/bookings/${bookingId}`);
+      return normalizeBooking(data);
     } catch {
-      setBookings(SEED_BOOKINGS);
+      return null;
     }
-    setIsLoaded(true);
   }, []);
 
-  // Persist bookings to localStorage whenever they change
-  useEffect(() => {
-    if (isLoaded) {
-      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(bookings));
+  const getUserBookings = useCallback(async (userId) => {
+    try {
+      const data = await api.get(`/api/bookings/user/${userId}`);
+      return data
+        .map(normalizeBooking)
+        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    } catch {
+      return [];
     }
-  }, [bookings, isLoaded]);
-
-  /**
-   * Generate next booking ID (e.g. BK-004)
-   */
-  const generateId = useCallback(() => {
-    const maxNum = bookings.reduce((max, b) => {
-      const num = parseInt(b.id.replace('BK-', ''), 10);
-      return num > max ? num : max;
-    }, 0);
-    return `BK-${String(maxNum + 1).padStart(3, '0')}`;
-  }, [bookings]);
-
-  /**
-   * Create a new booking.
-   * @returns {{ success: boolean, bookingId?: string, error?: string }}
-   */
-  const createBooking = useCallback((userId, slotId, slotName, date, startTime, duration) => {
-    // Check if the slot already has an active/confirmed booking
-    const conflict = bookings.find(
-      (b) => b.slotId === slotId && 
-             b.date === date &&
-             (b.status === 'confirmed' || b.status === 'active')
-    );
-    if (conflict) {
-      return { success: false, error: 'This slot is already booked for the selected date' };
-    }
-
-    const cost = parseFloat((duration * HOURLY_RATE).toFixed(2));
-    const newBooking = {
-      id: generateId(),
-      userId,
-      slotId,
-      slotName,
-      date,
-      startTime,
-      duration,
-      cost,
-      status: 'confirmed',
-      createdAt: new Date().toISOString(),
-    };
-
-    setBookings((prev) => [...prev, newBooking]);
-    return { success: true, bookingId: newBooking.id };
-  }, [bookings, generateId]);
-
-  /**
-   * Get a booking by ID.
-   */
-  const getBooking = useCallback((bookingId) => {
-    return bookings.find((b) => b.id === bookingId) || null;
-  }, [bookings]);
-
-  /**
-   * Get all bookings for a specific user.
-   */
-  const getUserBookings = useCallback((userId) => {
-    return bookings
-      .filter((b) => b.userId === userId)
-      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)); // newest first
-  }, [bookings]);
-
-  /**
-   * Cancel a booking.
-   */
-  const cancelBooking = useCallback((bookingId) => {
-    setBookings((prev) =>
-      prev.map((b) =>
-        b.id === bookingId && (b.status === 'confirmed' || b.status === 'active')
-          ? { ...b, status: 'cancelled' }
-          : b
-      )
-    );
-    return { success: true };
   }, []);
 
-  /**
-   * Complete a booking (after payment is processed)
-   */
-  const completeBooking = useCallback((bookingId, finalData) => {
-    setBookings((prev) =>
-      prev.map((b) =>
-        b.id === bookingId
-          ? { ...b, status: 'completed', ...finalData }
-          : b
-      )
-    );
-    return { success: true };
+  const cancelBooking = useCallback(async (bookingId) => {
+    try {
+      await api.delete(`/api/bookings/${bookingId}`);
+      return { success: true };
+    } catch (err) {
+      return { success: false, error: err.message };
+    }
   }, []);
 
-  const value = {
-    bookings,
-    hourlyRate: HOURLY_RATE,
-    createBooking,
-    getBooking,
-    getUserBookings,
-    cancelBooking,
-    completeBooking,
-  };
+  const completeBooking = useCallback(async (bookingId) => {
+    try {
+      await api.post(`/api/payments/simulate/${bookingId}`);
+      return { success: true };
+    } catch (err) {
+      return { success: false, error: err.message };
+    }
+  }, []);
 
   return (
-    <BookingContext.Provider value={value}>
+    <BookingContext.Provider value={{
+      hourlyRate: 2,
+      createBooking,
+      getBooking,
+      getUserBookings,
+      cancelBooking,
+      completeBooking,
+    }}>
       {children}
     </BookingContext.Provider>
   );

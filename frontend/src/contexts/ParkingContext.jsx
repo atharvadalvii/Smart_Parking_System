@@ -1,30 +1,89 @@
 "use client";
 
-import React, { createContext, useState } from 'react';
+import React, { createContext, useState, useEffect, useRef } from 'react';
+import { api } from '@/lib/api';
 
 export const ParkingContext = createContext();
 
-export const ParkingProvider = ({ children }) => {
-  const [parkingData] = useState({
-    slots: [
-      { id: 1, name: "A1", status: "free", sensorIR: false, sensorUltrasonic: 120 },
-      { id: 2, name: "A2", status: "occupied", sensorIR: true, sensorUltrasonic: 15 },
-      { id: 3, name: "A3", status: "free", sensorIR: false, sensorUltrasonic: 200 }
-    ],
-    gates: {
-      entry: { isOpen: false, lastActivity: new Date().toISOString() },
-      exit: { isOpen: false, lastActivity: new Date(Date.now() - 120000).toISOString() }
-    },
-    vehicleCount: 1,
-    totalSlots: 3,
-    isConnected: true
-  });
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
-  // Real-time updates will come from WebSocket in Phase 4.
-  // Slot status changes are now driven by booking actions.
+export const ParkingProvider = ({ children }) => {
+  const [slots, setSlots] = useState([]);
+  const [vehicleCount, setVehicleCount] = useState(0);
+  const [isConnected, setIsConnected] = useState(false);
+  const sseRef = useRef(null);
+
+  const fetchSlots = async () => {
+    try {
+      const data = await api.get('/api/slots/');
+      setSlots(data.map(s => ({
+        id: s.id,
+        name: s.slot_number,
+        status: s.status,
+        sensorIR: s.sensor_ir ?? false,
+        sensorUltrasonic: s.sensor_ultrasonic ?? 0,
+      })));
+      setIsConnected(true);
+    } catch {
+      setIsConnected(false);
+    }
+  };
+
+  const fetchVehicleCount = async () => {
+    try {
+      const data = await api.get('/api/slots/count');
+      setVehicleCount(data.vehicle_count);
+    } catch {}
+  };
+
+  // Apply a single slot update received from SSE
+  const applySlotUpdate = ({ slot_id, status }) => {
+    setSlots(prev =>
+      prev.map(s => s.id === slot_id ? { ...s, status } : s)
+    );
+  };
+
+  useEffect(() => {
+    fetchSlots();
+    fetchVehicleCount();
+
+    // Vehicle count still uses polling (SSE covers slot status only)
+    const countTimer = setInterval(fetchVehicleCount, 10000);
+
+    // Real-time slot updates via SSE
+    const es = new EventSource(`${API_BASE}/api/events/slots`);
+    sseRef.current = es;
+
+    es.onmessage = (e) => {
+      try {
+        applySlotUpdate(JSON.parse(e.data));
+      } catch {}
+    };
+
+    es.onerror = () => {
+      // SSE dropped — fall back to polling until reconnect
+      setIsConnected(false);
+    };
+
+    es.onopen = () => setIsConnected(true);
+
+    return () => {
+      es.close();
+      clearInterval(countTimer);
+    };
+  }, []);
 
   return (
-    <ParkingContext.Provider value={parkingData}>
+    <ParkingContext.Provider value={{
+      slots,
+      gates: {
+        entry: { isOpen: false, lastActivity: new Date().toISOString() },
+        exit: { isOpen: false, lastActivity: new Date().toISOString() },
+      },
+      vehicleCount,
+      totalSlots: slots.length,
+      isConnected,
+    }}>
       {children}
     </ParkingContext.Provider>
   );
