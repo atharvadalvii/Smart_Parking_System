@@ -30,7 +30,7 @@ function normalizeBooking(b) {
 
 export const BookingProvider = ({ children }) => {
   const createBooking = useCallback(async (userId, slotId, _slotName, date, startTime, duration) => {
-    const estimatedCost = parseFloat((duration * 2).toFixed(2));
+    const estimatedCost = parseFloat((duration * 3).toFixed(2));
     try {
       const data = await api.post('/api/bookings/', {
         user_id: userId,
@@ -77,6 +77,12 @@ export const BookingProvider = ({ children }) => {
 
   const completeBooking = useCallback(async (bookingId) => {
     try {
+      // Record exit to get real fare from actual timestamps
+      try {
+        await api.put(`/api/bookings/${bookingId}/exit`);
+      } catch {
+        // booking may not be active (e.g. never entered) — simulate handles fallback fare
+      }
       await api.post(`/api/payments/simulate/${bookingId}`);
       return { success: true };
     } catch (err) {
@@ -86,7 +92,7 @@ export const BookingProvider = ({ children }) => {
 
   return (
     <BookingContext.Provider value={{
-      hourlyRate: 2,
+      hourlyRate: 3,
       createBooking,
       getBooking,
       getUserBookings,

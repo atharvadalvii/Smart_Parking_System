@@ -56,7 +56,12 @@ export const ParkingProvider = ({ children }) => {
 
     es.onmessage = (e) => {
       try {
-        applySlotUpdate(JSON.parse(e.data));
+        const data = JSON.parse(e.data);
+        if (data.vehicle_count !== undefined) {
+          setVehicleCount(data.vehicle_count);
+        } else if (data.slot_id) {
+          applySlotUpdate(data);
+        }
       } catch {}
     };
 

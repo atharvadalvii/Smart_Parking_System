@@ -45,11 +45,11 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const register = useCallback(async (formData) => {
-    const { name, email, phone, password } = formData;
+    const { name, email, phone, licensePlate, password } = formData;
     try {
-      const data = await api.post('/api/auth/register', { name, email, phone, password });
+      const data = await api.post('/api/auth/register', { name, email, phone, license_plate: licensePlate, password });
       localStorage.setItem(TOKEN_KEY, data.token);
-      const user = { id: data.user_id, name, email, phone };
+      const user = { id: data.user_id, name, email, phone, licensePlate };
       localStorage.setItem(USER_KEY, JSON.stringify(user));
       setCurrentUser(user);
       return { success: true };

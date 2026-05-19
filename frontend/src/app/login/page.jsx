@@ -100,15 +100,6 @@ export default function LoginPage() {
             {errors.password && <p className="mt-1.5 text-sm text-error">{errors.password}</p>}
           </div>
 
-          <div className="flex items-center justify-between text-[14px]">
-            <label className="flex items-center gap-[8px] cursor-pointer">
-              <input type="checkbox" className="rounded border-[#d6dbde] text-green-accent focus:ring-green-accent" />
-              <span className="text-text-black-soft">Remember me</span>
-            </label>
-            <Link href="#" className="text-green-accent hover:underline font-semibold">
-              Forgot password?
-            </Link>
-          </div>
 
           <Button type="submit" variant="primary" className="w-full mt-[16px] !py-[14px]">
             Log In

@@ -25,10 +25,14 @@ def register():
     name = data.get("name", "").strip()
     email = data.get("email", "").strip().lower()
     phone = data.get("phone", "").strip()
+    license_plate = data.get("license_plate", "").strip()
     password = data.get("password", "")
 
     if not all([name, email, password]):
         return jsonify({"error": "name, email, and password are required"}), 400
+
+    if len(password) < 8:
+        return jsonify({"error": "Password must be at least 8 characters"}), 400
 
     db = get_db()
     existing = db.collection("users").where("email", "==", email).limit(1).get()
@@ -40,6 +44,7 @@ def register():
         "name": name,
         "email": email,
         "phone": phone,
+        "license_plate": license_plate,
         "password_hash": generate_password_hash(password),
         "created_at": datetime.now(timezone.utc),
     })

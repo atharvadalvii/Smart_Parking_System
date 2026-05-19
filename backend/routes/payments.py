@@ -1,6 +1,7 @@
 from flask import Blueprint, request, jsonify
 from datetime import datetime, timezone
 import stripe
+import config
 from services.firebase import get_db
 from services.stripe_service import create_payment_intent, construct_webhook_event
 from services.fare import fare_to_cents
@@ -8,11 +9,13 @@ from services.mqtt_client import publish
 from services.influx_client import write_fare
 from services.sse_bus import broadcast
 from services.influx_client import write_slot_status
+from services.auth_middleware import require_auth
 
 payments_bp = Blueprint("payments", __name__)
 
 
 @payments_bp.route("/create-intent", methods=["POST"])
+@require_auth
 def create_intent():
     data = request.get_json(silent=True) or {}
     booking_id = data.get("booking_id", "").strip()
@@ -104,8 +107,11 @@ def _handle_payment_succeeded(intent):
 
 
 @payments_bp.route("/simulate/<booking_id>", methods=["POST"])
+@require_auth
 def simulate_payment(booking_id):
     """Demo-only: marks a booking as paid without going through Stripe."""
+    if not config.DEMO_MODE:
+        return jsonify({"error": "Simulate endpoint is disabled in production"}), 403
     db = get_db()
     booking_doc = db.collection("bookings").document(booking_id).get()
     if not booking_doc.exists:

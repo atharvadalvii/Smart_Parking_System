@@ -89,11 +89,11 @@ const DURATION_OPTIONS = [
 const BookingForm = ({ selectedSlot, hourlyRate = 2, onSubmit, onCancel, submitting = false }) => {
   // Default date = today, default time = next full hour
   const now = new Date();
-  const nextHour = new Date(now);
-  nextHour.setHours(nextHour.getHours() + 1, 0, 0, 0);
-
   const todayStr = now.toISOString().split('T')[0];
-  const defaultTime = `${String(nextHour.getHours()).padStart(2, '0')}:00`;
+
+  // If current hour is 23, adding 1 wraps to next day — cap default at 23:59 instead
+  const nextH = now.getHours() + 1;
+  const defaultTime = nextH >= 24 ? '23:59' : `${String(nextH).padStart(2, '0')}:00`;
 
   const [formData, setFormData] = useState({
     date: todayStr,

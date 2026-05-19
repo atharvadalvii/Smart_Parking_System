@@ -1,21 +1,76 @@
 "use client";
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import Card from '@/components/common/Card';
 import Button from '@/components/common/Button';
 import Toast from '@/components/common/Toast';
-import UserQRCode from '@/components/qrcode/UserQRCode';
 import { useAuth } from '@/hooks/useAuth';
 import { useBooking } from '@/hooks/useBooking';
 
+function BookingQRCard({ booking }) {
+  const handleDownload = useCallback(() => {
+    const link = document.createElement('a');
+    link.download = `parking-qr-${booking.id}.png`;
+    link.href = `data:image/png;base64,${booking.qrCode}`;
+    link.click();
+  }, [booking.id, booking.qrCode]);
+
+  return (
+    <Card elevated className="text-center">
+      <div className="mb-[12px]">
+        <span className="text-[16px] font-semibold text-text-black">Slot {booking.slotName}</span>
+        {booking.date && (
+          <span className="text-[13px] text-text-black-soft ml-[8px]">
+            {booking.date}{booking.startTime ? ` at ${booking.startTime}` : ''}
+          </span>
+        )}
+      </div>
+
+      {/* QR image from backend base64 PNG */}
+      <div className="bg-white rounded-[12px] p-[24px] border border-divider inline-block mb-[16px]">
+        {booking.qrCode ? (
+          <img
+            src={`data:image/png;base64,${booking.qrCode}`}
+            alt={`QR code for booking ${booking.id}`}
+            width={220}
+            height={220}
+            className="block"
+          />
+        ) : (
+          <div className="w-[220px] h-[220px] flex items-center justify-center text-text-black-soft text-[13px]">
+            QR not available
+          </div>
+        )}
+      </div>
+
+      <p className="text-[12px] text-text-black-soft font-mono mb-[16px] break-all px-[8px]">
+        {booking.id}
+      </p>
+
+      <div className="flex flex-col gap-[8px]">
+        <Button variant="outlineDark" size="sm" onClick={handleDownload} className="w-full">
+          ↓ Download QR Code
+        </Button>
+        <Link href={`/payment?bookingId=${booking.id}`} className="block">
+          <Button variant="secondary" className="w-full !py-[10px] text-[14px] !bg-starbucks-green !text-white hover:!bg-starbucks-green/90">
+            Simulate Exit &amp; Pay
+          </Button>
+        </Link>
+      </div>
+    </Card>
+  );
+}
+
 export default function QRCodePage() {
+  // All hooks must be declared before any conditional returns
   const { currentUser, isAuthenticated, isLoading: authLoading } = useAuth();
   const { getUserBookings } = useBooking();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [toast, setToast] = useState(null);
+  const [activeBookings, setActiveBookings] = useState([]);
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -29,16 +84,6 @@ export default function QRCodePage() {
     }
   }, [searchParams]);
 
-  if (authLoading || !isAuthenticated) {
-    return (
-      <div className="flex-grow flex items-center justify-center">
-        <div className="text-text-black-soft text-[16px]">Loading...</div>
-      </div>
-    );
-  }
-
-  const [activeBookings, setActiveBookings] = useState([]);
-
   useEffect(() => {
     if (isAuthenticated && currentUser) {
       getUserBookings(currentUser.id).then(bookings =>
@@ -47,23 +92,49 @@ export default function QRCodePage() {
     }
   }, [isAuthenticated, currentUser, getUserBookings]);
 
+  if (authLoading || !isAuthenticated) {
+    return (
+      <div className="flex-grow flex items-center justify-center">
+        <div className="text-text-black-soft text-[16px]">Loading...</div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex-grow container mx-auto px-4 md:px-6 lg:px-10 max-w-[600px] py-[32px] md:py-[48px]">
       {toast && <Toast message={toast} onClose={() => setToast(null)} />}
+
       {/* Header */}
       <div className="text-center mb-[32px]">
         <h1 className="text-[24px] md:text-[32px] font-semibold text-starbucks-green mb-[4px]">
-          My QR Code
+          My QR Code{activeBookings.length > 1 ? 's' : ''}
         </h1>
         <p className="text-[16px] text-text-black-soft">
-          Your personal parking membership code
+          Present your booking QR code at the gate scanner
         </p>
       </div>
 
-      {/* QR Code Component */}
-      <UserQRCode userId={currentUser.id} userName={currentUser.name} />
+      {/* Active booking QR codes */}
+      {activeBookings.length > 0 ? (
+        <div className="space-y-[24px]">
+          {activeBookings.map(booking => (
+            <BookingQRCard key={booking.id} booking={booking} />
+          ))}
+        </div>
+      ) : (
+        <Card elevated className="text-center py-[48px]">
+          <div className="text-[48px] mb-[16px]">🅿️</div>
+          <h2 className="text-[18px] font-semibold text-text-black mb-[8px]">No Active Bookings</h2>
+          <p className="text-[14px] text-text-black-soft mb-[24px]">
+            You don&apos;t have any confirmed or active bookings right now.
+          </p>
+          <Link href="/booking">
+            <Button variant="primary">Book a Parking Slot</Button>
+          </Link>
+        </Card>
+      )}
 
-      {/* Instructions */}
+      {/* How to Use */}
       <Card elevated className="mt-[24px]">
         <h3 className="text-[16px] font-semibold text-text-black mb-[16px]">How to Use</h3>
         <div className="space-y-[16px]">
@@ -81,33 +152,6 @@ export default function QRCodePage() {
           </div>
         </div>
       </Card>
-
-      {/* Active Bookings */}
-      {activeBookings.length > 0 && (
-        <Card elevated className="mt-[24px] bg-green-accent/5 border-green-accent/20">
-          <h3 className="text-[16px] font-semibold text-text-black mb-[12px]">Active Bookings</h3>
-          <div className="space-y-[10px]">
-            {activeBookings.map((booking) => (
-              <div key={booking.id} className="bg-white rounded-[8px] p-[16px] border border-divider">
-                <Link href={`/booking/${booking.id}`} className="block hover:opacity-80 transition-opacity mb-[12px]">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <span className="text-[14px] font-semibold text-text-black">Slot {booking.slotName}</span>
-                      <span className="text-[13px] text-text-black-soft ml-[8px]">{booking.date} at {booking.startTime}</span>
-                    </div>
-                    <span className="text-[13px] font-semibold text-green-accent">{booking.id} →</span>
-                  </div>
-                </Link>
-                <Link href={`/payment?bookingId=${booking.id}`} className="block">
-                  <Button variant="secondary" className="w-full !py-[10px] text-[14px] !bg-starbucks-green !text-white hover:!bg-starbucks-green/90">
-                    🚙 Simulate Exit & Pay
-                  </Button>
-                </Link>
-              </div>
-            ))}
-          </div>
-        </Card>
-      )}
 
       {/* Back button */}
       <div className="mt-[24px] text-center">
