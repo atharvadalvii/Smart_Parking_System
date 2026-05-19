@@ -3,25 +3,20 @@
 import React, { useState, useMemo } from 'react';
 import Button from '@/components/common/Button';
 
-const HOURS = Array.from({ length: 24 }, (_, i) => i);
-const MINUTES = [0, 15, 30, 45];
+const HOURS   = Array.from({ length: 24 }, (_, i) => i);
+const MINUTES = Array.from({ length: 60 }, (_, i) => i);
 
 const TimePicker = ({ value, onChange, isToday }) => {
   const [h, m] = value.split(':').map(Number);
   const now = new Date();
-
-  const isHourDisabled = (hour) =>
-    isToday && (hour < now.getHours() || (hour === now.getHours() && now.getMinutes() >= 45));
-
-  const isMinuteDisabled = (hour, minute) =>
-    isToday && hour === now.getHours() && minute <= now.getMinutes();
+  const nowH = now.getHours();
+  const nowM = now.getMinutes();
 
   const setHour = (hour) => {
-    // If selected minute becomes invalid with new hour, bump to next valid minute
+    // If the new hour makes the current minute invalid, bump minute to now+1
     let newMin = m;
-    if (isToday && hour === now.getHours()) {
-      const validMins = MINUTES.filter(min => min > now.getMinutes());
-      if (validMins.length) newMin = validMins[0];
+    if (isToday && hour === nowH && m <= nowM) {
+      newMin = Math.min(nowM + 1, 59);
     }
     onChange(`${String(hour).padStart(2, '0')}:${String(newMin).padStart(2, '0')}`);
   };
@@ -30,66 +25,52 @@ const TimePicker = ({ value, onChange, isToday }) => {
     onChange(`${String(h).padStart(2, '0')}:${String(minute).padStart(2, '0')}`);
   };
 
-  return (
-    <div className="border border-[#d6dbde] rounded-[4px] p-[12px] bg-white space-y-[12px]">
-      {/* Hours */}
-      <div>
-        <p className="text-[11px] font-semibold text-text-black-soft uppercase tracking-wider mb-[8px]">Hour</p>
-        <div className="grid grid-cols-8 gap-[4px]">
-          {HOURS.map(hour => {
-            const disabled = isHourDisabled(hour);
-            const selected = hour === h;
-            return (
-              <button
-                key={hour}
-                type="button"
-                disabled={disabled}
-                onClick={() => setHour(hour)}
-                className={`py-[6px] rounded-[4px] text-[13px] font-medium transition-colors
-                  ${selected
-                    ? 'bg-green-accent text-white'
-                    : disabled
-                    ? 'text-[#ccc] cursor-not-allowed'
-                    : 'bg-neutral-warm text-text-black hover:bg-green-accent/10'
-                  }`}
-              >
-                {String(hour).padStart(2, '0')}
-              </button>
-            );
-          })}
-        </div>
-      </div>
+  const hourDisabled  = (hour) => isToday && hour < nowH;
+  const minuteDisabled = (minute) => isToday && h === nowH && minute <= nowM;
 
-      {/* Minutes */}
-      <div>
-        <p className="text-[11px] font-semibold text-text-black-soft uppercase tracking-wider mb-[8px]">Minute</p>
-        <div className="grid grid-cols-4 gap-[6px]">
-          {MINUTES.map(minute => {
-            const disabled = isMinuteDisabled(h, minute);
-            const selected = minute === m;
-            return (
-              <button
-                key={minute}
-                type="button"
-                disabled={disabled}
-                onClick={() => setMinute(minute)}
-                className={`py-[8px] rounded-[4px] text-[14px] font-semibold transition-colors
-                  ${selected
-                    ? 'bg-green-accent text-white'
-                    : disabled
-                    ? 'text-[#ccc] cursor-not-allowed bg-neutral-warm'
-                    : 'bg-neutral-warm text-text-black hover:bg-green-accent/10'
-                  }`}
-              >
-                :{String(minute).padStart(2, '0')}
-              </button>
-            );
-          })}
+  const selectBase = "w-full px-[12px] py-[10px] border border-[#d6dbde] rounded-[4px] bg-white focus:outline-none focus:ring-1 focus:ring-green-accent focus:border-green-accent text-[15px] font-medium text-text-black appearance-none";
+
+  return (
+    <div className="border border-[#d6dbde] rounded-[4px] p-[14px] bg-white space-y-[14px]">
+      <div className="flex gap-[12px]">
+        {/* Hour */}
+        <div className="flex-1">
+          <p className="text-[11px] font-semibold text-text-black-soft uppercase tracking-wider mb-[6px]">Hour</p>
+          <select
+            value={h}
+            onChange={e => setHour(Number(e.target.value))}
+            className={selectBase}
+          >
+            {HOURS.map(hour => (
+              <option key={hour} value={hour} disabled={hourDisabled(hour)}>
+                {String(hour).padStart(2, '0')}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Separator */}
+        <div className="flex items-end pb-[10px] text-[24px] font-bold text-text-black-soft">:</div>
+
+        {/* Minute */}
+        <div className="flex-1">
+          <p className="text-[11px] font-semibold text-text-black-soft uppercase tracking-wider mb-[6px]">Minute</p>
+          <select
+            value={m}
+            onChange={e => setMinute(Number(e.target.value))}
+            className={selectBase}
+          >
+            {MINUTES.map(minute => (
+              <option key={minute} value={minute} disabled={minuteDisabled(minute)}>
+                {String(minute).padStart(2, '0')}
+              </option>
+            ))}
+          </select>
         </div>
       </div>
 
       {/* Selected display */}
-      <div className="text-center text-[22px] font-bold text-green-accent tracking-widest">
+      <div className="text-center text-[26px] font-bold text-green-accent tracking-widest">
         {String(h).padStart(2, '0')}:{String(m).padStart(2, '0')}
       </div>
     </div>
