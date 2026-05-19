@@ -84,9 +84,8 @@ def main():
     # Start sensor polling (publishes distance to MQTT every SENSOR_INTERVAL_S)
     sensors.start(_stop)
 
-    # Start QR scanners (one per gate — uses same USB device, different gate label)
-    qr_scanner.start("entry", _stop)
-    qr_scanner.start("exit",  _stop)
+    # Single QR scanner — gate (entry vs exit) resolved from booking status
+    qr_scanner.start(_stop)
 
     logger.info("Smart Parking RPi ready")
     lcd.show_slot_summary({"S1": "free", "S2": "free", "S3": "free"})

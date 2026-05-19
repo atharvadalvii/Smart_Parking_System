@@ -44,8 +44,31 @@ def _find_device() -> evdev.InputDevice | None:
     return None
 
 
-def _call_backend(gate: str, booking_id: str):
-    """PUT /api/bookings/<id>/entry or /exit."""
+def _resolve_gate(booking_id: str) -> str | None:
+    """GET the booking status and return 'entry' or 'exit', or None on error."""
+    url = f"{config.BACKEND_URL}/api/bookings/{booking_id}"
+    try:
+        resp = requests.get(url, timeout=5)
+        if not resp.ok:
+            logger.warning("Could not fetch booking %s: %s", booking_id, resp.status_code)
+            return None
+        status = resp.json().get("status", "")
+        if status == "pending":
+            return "entry"
+        if status == "active":
+            return "exit"
+        logger.warning("Booking %s status '%s' — not actionable at gate", booking_id, status)
+        return None
+    except Exception as exc:
+        logger.error("Booking lookup failed: %s", exc)
+        return None
+
+
+def _call_backend(booking_id: str):
+    """Determine entry vs exit from booking status, then PUT the right endpoint."""
+    gate = _resolve_gate(booking_id)
+    if gate is None:
+        return
     url = f"{config.BACKEND_URL}/api/bookings/{booking_id}/{gate}"
     try:
         resp = requests.put(url, timeout=5)
@@ -54,24 +77,22 @@ def _call_backend(gate: str, booking_id: str):
             logger.info("Backend %s OK: %s", gate, data)
         else:
             logger.warning("Backend %s error: %s", gate, data)
-        return resp.ok, data
     except Exception as exc:
         logger.error("Backend call failed: %s", exc)
-        return False, {}
 
 
 _SHIFT_KEYS = {evdev.ecodes.KEY_LEFTSHIFT, evdev.ecodes.KEY_RIGHTSHIFT}
 
 
-def _read_loop(gate: str, stop_event: threading.Event):
-    """Read keystrokes from the HID device and fire backend calls on Enter."""
+def _read_loop(stop_event: threading.Event):
+    """Read keystrokes from the single HID device and fire backend calls on Enter."""
     device = _find_device()
     if device is None:
         logger.error("QR scanner device not found — set QR_DEVICE_PATH in .env")
         return
 
     device.grab()   # exclusive access so keystrokes don't reach the OS
-    logger.info("QR scanner ready on %s gate", gate)
+    logger.info("QR scanner ready (auto entry/exit from booking status)")
 
     buffer = ""
     shift_held = False
@@ -96,10 +117,10 @@ def _read_loop(gate: str, stop_event: threading.Event):
             buffer = ""
             shift_held = False
             if booking_id:
-                logger.info("QR scanned at %s gate: %s", gate, booking_id)
+                logger.info("QR scanned: %s", booking_id)
                 threading.Thread(
                     target=_call_backend,
-                    args=(gate, booking_id),
+                    args=(booking_id,),
                     daemon=True,
                 ).start()
         else:
@@ -107,15 +128,12 @@ def _read_loop(gate: str, stop_event: threading.Event):
             buffer += ch.upper() if shift_held and ch.isalpha() else ch
 
 
-def start(gate: str, stop_event: threading.Event):
-    """
-    gate: 'entry' or 'exit'
-    Spawns a daemon thread that reads the HID device.
-    """
+def start(stop_event: threading.Event):
+    """Spawns one daemon thread that reads the single GM65 HID device."""
     t = threading.Thread(
         target=_read_loop,
-        args=(gate, stop_event),
+        args=(stop_event,),
         daemon=True,
-        name=f"qr-{gate}",
+        name="qr-scanner",
     )
     t.start()
