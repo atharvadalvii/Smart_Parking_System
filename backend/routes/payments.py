@@ -6,6 +6,8 @@ from services.stripe_service import create_payment_intent, construct_webhook_eve
 from services.fare import fare_to_cents
 from services.mqtt_client import publish
 from services.influx_client import write_fare
+from services.sse_bus import broadcast
+from services.influx_client import write_slot_status
 
 payments_bp = Blueprint("payments", __name__)
 
@@ -130,6 +132,13 @@ def simulate_payment(booking_id):
         "payment_status": "paid",
         "status": "completed",
     })
+
+    # Free the slot so dashboard updates immediately
+    slot_id = booking.get("slot_id")
+    if slot_id:
+        db.collection("parking_slots").document(slot_id).update({"status": "free", "vehicle_plate": None})
+        broadcast({"slot_id": slot_id, "status": "free"})
+        write_slot_status(slot_id, "free")
 
     # Record fare in InfluxDB for Grafana
     write_fare(booking_id, fare)
