@@ -1,47 +1,265 @@
-# CITS_5506
-IoT Group Project
+# Smart Parking System — CITS5506 IoT Group Project
 
-## Smart Parking System - Frontend
-
-This is the frontend interface for the Smart Parking IoT system, built with **Next.js 14** and **Tailwind CSS**.
-
-### Quick Start
-1. Navigate to the `frontend` folder: `cd frontend`
-2. Install dependencies: `npm install`
-3. Run the development server: `npm run dev`
-4. Open [http://localhost:3000](http://localhost:3000) in your browser.
-
-**Test Account**
-- **Email:** `test@example.com`
-- **Password:** `123456`
+A full-stack IoT smart parking system with real-time slot monitoring, QR-based gate control, automated fare calculation, and live dashboards.
 
 ---
 
-### User Tutorial (Currently Implemented Features)
+## Architecture
 
-The frontend currently simulates the complete user journey for the smart parking application. No real hardware or backend is required to test this flow:
+```
+┌─────────────────┐      MQTT       ┌─────────────────────────────────────┐
+│  Raspberry Pi   │ ◄─────────────► │  Flask Backend (port 5001)          │
+│                 │                 │                                     │
+│ • HC-SR04       │  parking/slot/N │ • REST API  (bookings, auth,        │
+│   ultrasonic    │ ──────────────► │   payments, slots, path)            │
+│ • IR gate       │  parking/gate/* │ • MQTT subscriber                   │
+│   sensors       │ ──────────────► │ • SSE broadcast (/api/events/slots) │
+│ • Servo motors  │ ◄────────────── │ • Dijkstra LED path guidance        │
+│   (entry/exit   │  gate/*/open    │ • Firebase Firestore                │
+│    gates)       │  parking/path   │ • InfluxDB metrics → Grafana        │
+│ • WS2812B LEDs  │                 └─────────────────────────────────────┘
+│ • 16×2 LCD      │                           │  SSE / REST
+│ • GM65 QR       │                           ▼
+│   scanner       │              ┌────────────────────────┐
+└─────────────────┘              │  Next.js Frontend       │
+                                 │  (port 3000)            │
+                                 │                         │
+                                 │ • Live dashboard        │
+                                 │ • Booking flow          │
+                                 │ • QR code display       │
+                                 │ • Payment simulation    │
+                                 └────────────────────────┘
+```
 
-**1. Authentication (`/login`, `/register`)**
-- Users can create a new account or log in using the test credentials provided above.
+---
 
-**2. Real-time Dashboard (`/dashboard`)**
-- Displays a visual map of the parking lot with 3 distinct slots.
-- Color-coded status: **Green** (Available), **Red** (Occupied).
-- Shows real-time statistics including a total vehicle counter.
+## Prerequisites
 
-**3. Booking System (`/booking`)**
-- Users can select a parking slot, date, start time, and estimated duration.
-- The system prevents double-booking for the same time and slot.
+| Tool | Version | Notes |
+|------|---------|-------|
+| Python | 3.10+ | Backend + RPi scripts |
+| Node.js | 18+ | Frontend |
+| Mosquitto | any | MQTT broker — run on the server or RPi |
+| Firebase | — | Firestore database + service account JSON |
+| Stripe | — | Test keys only (payments are simulated) |
 
-**4. Member QR Code (`/qrcode`)**
-- Generates a unique QR code for the user. In the real system, this is scanned at the physical entrance/exit gates.
-- Displays all currently active or confirmed bookings.
+**Firebase setup:**
+1. Create a project at [console.firebase.google.com](https://console.firebase.google.com)
+2. Enable **Firestore** in Native mode
+3. Project Settings → Service Accounts → **Generate new private key**
+4. Save the downloaded file as `backend/firebase_service_account.json`
 
-**5. Simulated Exit & Payment Flow (`/payment`)**
-- **How to test:** Go to the QR Code page and click the `🚙 Simulate Exit & Pay` button under your active booking.
-- The system simulates driving out of the parking lot. It captures the real-time exit time, calculates the actual duration you parked, and computes the final cost ($2/hr).
-- A mock checkout form is presented. Completing the payment marks the session as `Completed`.
+---
 
-**6. Booking History (`/history`)**
-- A comprehensive table showing all past and current bookings.
-- Filter bookings by status: `All`, `Confirmed`, `Active`, `Completed`, or `Cancelled`.
+## Quick Start
+
+```bash
+# Clone and enter the repo
+git clone <repo-url>
+cd CITS_5506_Group
+
+# One-shot setup: installs deps, generates JWT secret, seeds Firestore,
+# writes rpi/.env with your machine's IP pre-filled
+bash setup.sh
+```
+
+`setup.sh` requires `backend/firebase_service_account.json` to exist before it can seed Firestore. If you run it before adding the file, just add the file and run `cd backend && .venv/bin/python seed.py` afterwards.
+
+---
+
+## Backend
+
+### Environment variables (`backend/.env`)
+
+`setup.sh` creates this file automatically. The only values you must supply yourself are the Stripe keys:
+
+```env
+STRIPE_SECRET_KEY=sk_test_your_key_here
+STRIPE_WEBHOOK_SECRET=whsec_your_webhook_secret_here
+JWT_SECRET_KEY=<auto-generated by setup.sh>
+GOOGLE_APPLICATION_CREDENTIALS=firebase_service_account.json
+
+MQTT_BROKER=localhost          # set to broker IP if remote
+MQTT_PORT=1883
+MQTT_USERNAME=
+MQTT_PASSWORD=
+
+# Optional — leave blank to disable InfluxDB metrics
+INFLUXDB_URL=http://localhost:8086
+INFLUXDB_TOKEN=
+INFLUXDB_ORG=
+INFLUXDB_BUCKET=parking
+
+# Feature flags
+DEMO_MODE=true                 # enables /api/payments/simulate endpoint
+CORS_ORIGINS=http://localhost:3000
+```
+
+### Run
+
+```bash
+cd backend
+.venv/bin/python app.py        # http://localhost:5001
+```
+
+Or with a standard venv activated:
+
+```bash
+cd backend
+source .venv/bin/activate
+python app.py
+```
+
+### Tests
+
+```bash
+cd backend
+.venv/bin/python -m pytest tests/ -v
+# 65 tests, ~1s
+```
+
+### API reference
+
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| POST | `/api/auth/register` | — | Create account |
+| POST | `/api/auth/login` | — | Login, returns JWT |
+| GET | `/api/auth/me` | Bearer | Current user profile |
+| GET | `/api/slots/` | — | All slot statuses |
+| GET | `/api/slots/count` | — | Vehicle count |
+| PUT | `/api/slots/<id>/status` | — | RPi sensor update |
+| POST | `/api/bookings/` | Bearer | Create booking |
+| GET | `/api/bookings/<id>` | — | Get booking |
+| GET | `/api/bookings/user/<uid>` | — | User's bookings |
+| PUT | `/api/bookings/<id>/entry` | — | Record gate entry (RPi) |
+| PUT | `/api/bookings/<id>/exit` | — | Record gate exit, calc fare (RPi) |
+| DELETE | `/api/bookings/<id>` | Bearer | Cancel booking |
+| POST | `/api/payments/simulate/<id>` | Bearer | Demo pay (DEMO_MODE only) |
+| GET | `/api/path/?slot=S1` | — | Dijkstra LED path |
+| GET | `/api/events/slots` | — | SSE stream (real-time slot updates) |
+
+---
+
+## Frontend
+
+### Environment (`frontend/.env.local`)
+
+```env
+NEXT_PUBLIC_API_URL=http://localhost:5001
+```
+
+### Run
+
+```bash
+cd frontend
+npm install
+npm run dev     # http://localhost:3000
+```
+
+### User flow
+
+1. **Register / Log in** — `/register`, `/login` (password minimum 8 characters)
+2. **Dashboard** — `/dashboard` — live slot map updated via SSE; click a free slot to book
+3. **Book a slot** — `/booking` — pick slot, date, time, duration; estimated cost shown at $3/hr
+4. **QR Code** — `/qrcode` — shows the booking-specific QR code (base64 PNG from backend) that the RPi gate scanner reads
+5. **Simulate Exit & Pay** — click the button on the QR page → `/payment` → pay → slot freed instantly on dashboard
+6. **History** — `/history` — all bookings with status filters
+
+---
+
+## Raspberry Pi
+
+### Wiring summary
+
+| Component | GPIO pins |
+|-----------|-----------|
+| HC-SR04 slot 1 | TRIG 23, ECHO 24 |
+| HC-SR04 slot 2 | TRIG 20, ECHO 21 |
+| HC-SR04 slot 3 | TRIG 26, ECHO 19 |
+| IR entry sensor | GPIO 5 |
+| IR exit sensor | GPIO 6 |
+| Servo entry gate | GPIO 12 (PWM) |
+| Servo exit gate | GPIO 13 (PWM) |
+| RGB LED slot S1 | R 17, G 27, B 22 |
+| RGB LED slot S2 | R 10, G 9, B 11 |
+| RGB LED slot S3 | R 25, G 8, B 7 |
+| WS2812B strip | GPIO 18 (24 LEDs) |
+| 16×2 LCD | I2C 0x27 |
+| GM65 QR scanner | USB HID (auto-detected) |
+
+### Environment (`rpi/.env`)
+
+`setup.sh` writes this file with your machine's IP pre-filled. Copy it to the Pi:
+
+```bash
+scp rpi/.env pi@<rpi-ip>:~/parking/
+```
+
+```env
+BACKEND_URL=http://<flask-server-ip>:5001
+MQTT_BROKER=<mqtt-broker-ip>
+MQTT_PORT=1883
+QR_DEVICE_PATH=        # leave blank to auto-detect GM65
+```
+
+### Run
+
+```bash
+# On the Raspberry Pi
+cd ~/parking
+pip install -r requirements.txt
+python main.py
+```
+
+### IoT data flow
+
+```
+Sensor reads every 2s → MQTT parking/slot/N
+  └► backend _handle_slot()
+      ├► Firestore slot.status update
+      ├► SSE broadcast → frontend dashboard
+      └► InfluxDB write → Grafana
+
+QR scan at entry gate → PUT /api/bookings/<id>/entry
+  ├► Firestore: status=active, entry_time=now
+  ├► MQTT parking/gate/entry/open → servo opens
+  └► MQTT parking/path → WS2812B LEDs light up Dijkstra route
+
+QR scan at exit gate → PUT /api/bookings/<id>/exit
+  ├► Firestore: fare_amount calculated ($3/hr, $2 minimum)
+  └► User pays on web → MQTT parking/gate/exit/open → servo opens
+```
+
+---
+
+## Firestore collections
+
+| Collection | Document ID | Key fields |
+|------------|-------------|------------|
+| `parking_slots` | S1, S2, S3 | `status`, `slot_number`, `vehicle_plate` |
+| `bookings` | auto | `user_id`, `slot_id`, `status`, `qr_code`, `fare_amount`, `payment_status` |
+| `payments` | auto | `booking_id`, `amount`, `status`, `simulated` |
+| `users` | auto | `name`, `email`, `phone`, `license_plate`, `password_hash` |
+| `system` | `vehicle_count` | `count` |
+
+To reset the database to a clean state:
+
+```bash
+cd backend && .venv/bin/python seed.py
+```
+
+---
+
+## Tech stack
+
+| Layer | Technology |
+|-------|-----------|
+| Backend | Python 3.10+, Flask 3.0, Firebase Admin SDK 6.5 |
+| Database | Google Cloud Firestore |
+| Messaging | MQTT (paho-mqtt 2.1), Server-Sent Events |
+| Metrics | InfluxDB + Grafana (optional) |
+| Payments | Stripe (test mode) / simulated |
+| Frontend | Next.js 16, React, Tailwind CSS |
+| RPi | RPi.GPIO, evdev, rpi-ws281x, RPLCD |
+| Path | NetworkX Dijkstra |
+| Auth | JWT (PyJWT), bcrypt |
