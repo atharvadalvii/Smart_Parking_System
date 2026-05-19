@@ -5,7 +5,7 @@ import { api } from '@/lib/api';
 
 export const ParkingContext = createContext();
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
 
 export const ParkingProvider = ({ children }) => {
   const [slots, setSlots] = useState([]);
@@ -77,8 +77,8 @@ export const ParkingProvider = ({ children }) => {
     <ParkingContext.Provider value={{
       slots,
       gates: {
-        entry: { isOpen: false, lastActivity: new Date().toISOString() },
-        exit: { isOpen: false, lastActivity: new Date().toISOString() },
+        entry: { isOpen: false, lastActivity: null },
+        exit: { isOpen: false, lastActivity: null },
       },
       vehicleCount,
       totalSlots: slots.length,

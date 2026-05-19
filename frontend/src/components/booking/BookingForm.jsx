@@ -3,6 +3,80 @@
 import React, { useState, useMemo } from 'react';
 import Button from '@/components/common/Button';
 
+const HOURS   = Array.from({ length: 24 }, (_, i) => i);
+const MINUTES = Array.from({ length: 60 }, (_, i) => i);
+
+const TimePicker = ({ value, onChange, isToday }) => {
+  const [h, m] = value.split(':').map(Number);
+  const now = new Date();
+  const nowH = now.getHours();
+  const nowM = now.getMinutes();
+
+  const setHour = (hour) => {
+    // If the new hour makes the current minute invalid, bump minute to now+1
+    let newMin = m;
+    if (isToday && hour === nowH && m <= nowM) {
+      newMin = Math.min(nowM + 1, 59);
+    }
+    onChange(`${String(hour).padStart(2, '0')}:${String(newMin).padStart(2, '0')}`);
+  };
+
+  const setMinute = (minute) => {
+    onChange(`${String(h).padStart(2, '0')}:${String(minute).padStart(2, '0')}`);
+  };
+
+  const hourDisabled  = (hour) => isToday && hour < nowH;
+  const minuteDisabled = (minute) => isToday && h === nowH && minute <= nowM;
+
+  const selectBase = "w-full px-[12px] py-[10px] border border-[#d6dbde] rounded-[4px] bg-white focus:outline-none focus:ring-1 focus:ring-green-accent focus:border-green-accent text-[15px] font-medium text-text-black appearance-none";
+
+  return (
+    <div className="border border-[#d6dbde] rounded-[4px] p-[14px] bg-white space-y-[14px]">
+      <div className="flex gap-[12px]">
+        {/* Hour */}
+        <div className="flex-1">
+          <p className="text-[11px] font-semibold text-text-black-soft uppercase tracking-wider mb-[6px]">Hour</p>
+          <select
+            value={h}
+            onChange={e => setHour(Number(e.target.value))}
+            className={selectBase}
+          >
+            {HOURS.map(hour => (
+              <option key={hour} value={hour} disabled={hourDisabled(hour)}>
+                {String(hour).padStart(2, '0')}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Separator */}
+        <div className="flex items-end pb-[10px] text-[24px] font-bold text-text-black-soft">:</div>
+
+        {/* Minute */}
+        <div className="flex-1">
+          <p className="text-[11px] font-semibold text-text-black-soft uppercase tracking-wider mb-[6px]">Minute</p>
+          <select
+            value={m}
+            onChange={e => setMinute(Number(e.target.value))}
+            className={selectBase}
+          >
+            {MINUTES.map(minute => (
+              <option key={minute} value={minute} disabled={minuteDisabled(minute)}>
+                {String(minute).padStart(2, '0')}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      {/* Selected display */}
+      <div className="text-center text-[26px] font-bold text-green-accent tracking-widest">
+        {String(h).padStart(2, '0')}:{String(m).padStart(2, '0')}
+      </div>
+    </div>
+  );
+};
+
 const DURATION_OPTIONS = [
   { value: 0.5, label: '30 minutes' },
   { value: 1, label: '1 hour' },
@@ -12,7 +86,7 @@ const DURATION_OPTIONS = [
   { value: 8, label: 'Full Day (8 hours)' },
 ];
 
-const BookingForm = ({ selectedSlot, hourlyRate = 2, onSubmit, onCancel }) => {
+const BookingForm = ({ selectedSlot, hourlyRate = 2, onSubmit, onCancel, submitting = false }) => {
   // Default date = today, default time = next full hour
   const now = new Date();
   const nextHour = new Date(now);
@@ -116,16 +190,16 @@ const BookingForm = ({ selectedSlot, hourlyRate = 2, onSubmit, onCancel }) => {
 
       {/* Start time */}
       <div>
-        <label className="block text-[14px] font-semibold mb-[8px] text-text-black" htmlFor="startTime">
+        <label className="block text-[14px] font-semibold mb-[8px] text-text-black">
           Start Time
         </label>
-        <input
-          id="startTime"
-          name="startTime"
-          type="time"
+        <TimePicker
           value={formData.startTime}
-          onChange={handleChange}
-          className={`${inputStyles} ${errors.startTime ? errorInputStyles : normalInputStyles}`}
+          isToday={formData.date === todayStr}
+          onChange={(time) => {
+            setFormData(prev => ({ ...prev, startTime: time }));
+            setErrors(prev => ({ ...prev, startTime: '' }));
+          }}
         />
         {errors.startTime && <p className="mt-[4px] text-[13px] text-error">{errors.startTime}</p>}
       </div>
@@ -171,8 +245,8 @@ const BookingForm = ({ selectedSlot, hourlyRate = 2, onSubmit, onCancel }) => {
 
       {/* Buttons */}
       <div className="flex flex-col sm:flex-row gap-[12px] pt-[8px]">
-        <Button type="submit" variant="primary" className="flex-1 !py-[14px]">
-          Confirm Booking
+        <Button type="submit" variant="primary" className="flex-1 !py-[14px]" disabled={submitting}>
+          {submitting ? 'Booking...' : 'Confirm Booking'}
         </Button>
         <Button type="button" variant="outlineDark" className="flex-1 !py-[14px]" onClick={onCancel}>
           Back
