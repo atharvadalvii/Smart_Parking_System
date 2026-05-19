@@ -60,6 +60,9 @@ def _call_backend(gate: str, booking_id: str):
         return False, {}
 
 
+_SHIFT_KEYS = {evdev.ecodes.KEY_LEFTSHIFT, evdev.ecodes.KEY_RIGHTSHIFT}
+
+
 def _read_loop(gate: str, stop_event: threading.Event):
     """Read keystrokes from the HID device and fire backend calls on Enter."""
     device = _find_device()
@@ -71,12 +74,19 @@ def _read_loop(gate: str, stop_event: threading.Event):
     logger.info("QR scanner ready on %s gate", gate)
 
     buffer = ""
+    shift_held = False
     for event in device.read_loop():
         if stop_event.is_set():
             break
         if event.type != evdev.ecodes.EV_KEY:
             continue
         key_event = evdev.categorize(event)
+
+        # Track shift key state for uppercase decoding
+        if key_event.scancode in _SHIFT_KEYS:
+            shift_held = key_event.keystate in (evdev.KeyEvent.key_down, evdev.KeyEvent.key_hold)
+            continue
+
         if key_event.keystate != evdev.KeyEvent.key_down:
             continue
 
@@ -84,6 +94,7 @@ def _read_loop(gate: str, stop_event: threading.Event):
         if code == evdev.ecodes.KEY_ENTER:
             booking_id = buffer.strip()
             buffer = ""
+            shift_held = False
             if booking_id:
                 logger.info("QR scanned at %s gate: %s", gate, booking_id)
                 threading.Thread(
@@ -92,7 +103,8 @@ def _read_loop(gate: str, stop_event: threading.Event):
                     daemon=True,
                 ).start()
         else:
-            buffer += _KEY_MAP.get(code, "")
+            ch = _KEY_MAP.get(code, "")
+            buffer += ch.upper() if shift_held and ch.isalpha() else ch
 
 
 def start(gate: str, stop_event: threading.Event):
