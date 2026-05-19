@@ -34,7 +34,7 @@ export const AuthProvider = ({ children }) => {
       setCurrentUser(user);
       // fetch full profile in background to get name/phone
       api.get('/api/auth/me').then(profile => {
-        const full = { id: data.user_id, name: profile.name, email: profile.email, phone: profile.phone };
+        const full = { id: data.user_id, name: profile.name, email: profile.email, phone: profile.phone, licensePlate: profile.license_plate };
         localStorage.setItem(USER_KEY, JSON.stringify(full));
         setCurrentUser(full);
       }).catch(() => {});

@@ -101,4 +101,5 @@ def get_me():
         "name": user["name"],
         "email": user["email"],
         "phone": user.get("phone", ""),
+        "license_plate": user.get("license_plate", ""),
     }), 200
