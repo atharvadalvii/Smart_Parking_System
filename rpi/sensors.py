@@ -6,6 +6,7 @@ import time
 import RPi.GPIO as GPIO
 
 import config
+import leds
 import mqtt_client
 
 logger = logging.getLogger(__name__)
@@ -42,11 +43,16 @@ def _slot_loop(slot_num: str, trig: int, echo: int, stop_event: threading.Event)
     GPIO.setup(echo, GPIO.IN)
     logger.info("Slot %s sensor started (TRIG=%d ECHO=%d)", slot_num, trig, echo)
 
+    last_status = None
     while not stop_event.is_set():
         dist = _measure_distance(trig, echo)
         if dist > 0:
+            status = "occupied" if dist < config.OCCUPANCY_THRESHOLD_CM else "free"
             mqtt_client.publish_slot(slot_num, dist)
-            logger.debug("Slot %s: %.1f cm", slot_num, dist)
+            logger.debug("Slot %s: %.1f cm → %s", slot_num, dist, status)
+            if status != last_status:
+                leds.set_slot_led(f"S{slot_num}", status)
+                last_status = status
         stop_event.wait(config.SENSOR_INTERVAL_S)
 
 

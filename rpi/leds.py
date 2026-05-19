@@ -47,14 +47,18 @@ def set_slot_led(slot_id: str, status: str):
 
 def _setup_strip():
     global _strip
-    _strip = neopixel.NeoPixel(
-        board.D18,
-        config.NEOPIXEL_COUNT,
-        brightness=config.NEOPIXEL_BRIGHTNESS,
-        auto_write=False,
-    )
-    _strip.fill((0, 0, 0))
-    _strip.show()
+    try:
+        _strip = neopixel.NeoPixel(
+            board.D18,
+            config.NEOPIXEL_COUNT,
+            brightness=config.NEOPIXEL_BRIGHTNESS,
+            auto_write=False,
+        )
+        _strip.fill((0, 0, 0))
+        _strip.show()
+    except Exception as exc:
+        logger.warning("NeoPixel strip not available (run as root?): %s", exc)
+        _strip = None
 
 
 def _clear_strip():
