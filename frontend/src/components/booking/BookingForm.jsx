@@ -86,7 +86,7 @@ const DURATION_OPTIONS = [
   { value: 8, label: 'Full Day (8 hours)' },
 ];
 
-const BookingForm = ({ selectedSlot, hourlyRate = 2, onSubmit, onCancel }) => {
+const BookingForm = ({ selectedSlot, hourlyRate = 2, onSubmit, onCancel, submitting = false }) => {
   // Default date = today, default time = next full hour
   const now = new Date();
   const nextHour = new Date(now);
@@ -245,8 +245,8 @@ const BookingForm = ({ selectedSlot, hourlyRate = 2, onSubmit, onCancel }) => {
 
       {/* Buttons */}
       <div className="flex flex-col sm:flex-row gap-[12px] pt-[8px]">
-        <Button type="submit" variant="primary" className="flex-1 !py-[14px]">
-          Confirm Booking
+        <Button type="submit" variant="primary" className="flex-1 !py-[14px]" disabled={submitting}>
+          {submitting ? 'Booking...' : 'Confirm Booking'}
         </Button>
         <Button type="button" variant="outlineDark" className="flex-1 !py-[14px]" onClick={onCancel}>
           Back

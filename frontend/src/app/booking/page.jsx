@@ -20,6 +20,7 @@ export default function BookingPage() {
   const [step, setStep] = useState(1);
   const [selectedSlotId, setSelectedSlotId] = useState(null);
   const [bookingError, setBookingError] = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
   // If ?slot=1 is passed (e.g. from dashboard), pre-select that slot
   useEffect(() => {
@@ -60,8 +61,10 @@ export default function BookingPage() {
     }
   };
 
-  const handleBookingSubmit = (formData) => {
-    const result = createBooking(
+  const handleBookingSubmit = async (formData) => {
+    setSubmitting(true);
+    setBookingError('');
+    const result = await createBooking(
       currentUser.id,
       selectedSlot.id,
       selectedSlot.name,
@@ -69,11 +72,12 @@ export default function BookingPage() {
       formData.startTime,
       formData.duration
     );
+    setSubmitting(false);
 
     if (result.success) {
-      router.push(`/booking/${result.bookingId}`);
+      router.push(`/qrcode?bookingId=${result.bookingId}`);
     } else {
-      setBookingError(result.error);
+      setBookingError(result.error || 'Booking failed. Please try again.');
     }
   };
 
@@ -155,6 +159,7 @@ export default function BookingPage() {
               hourlyRate={hourlyRate}
               onSubmit={handleBookingSubmit}
               onCancel={() => setStep(1)}
+              submitting={submitting}
             />
           </div>
         )}
