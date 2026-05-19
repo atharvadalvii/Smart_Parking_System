@@ -77,8 +77,8 @@ export const ParkingProvider = ({ children }) => {
     <ParkingContext.Provider value={{
       slots,
       gates: {
-        entry: { isOpen: false, lastActivity: new Date().toISOString() },
-        exit: { isOpen: false, lastActivity: new Date().toISOString() },
+        entry: { isOpen: false, lastActivity: null },
+        exit: { isOpen: false, lastActivity: null },
       },
       vehicleCount,
       totalSlots: slots.length,

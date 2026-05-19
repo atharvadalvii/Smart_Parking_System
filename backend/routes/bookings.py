@@ -4,6 +4,8 @@ from services.firebase import get_db
 from services.fare import calculate_fare
 from services.mqtt_client import publish
 from services.graph import shortest_path
+from services.sse_bus import broadcast
+from services.influx_client import write_slot_status
 import logging
 import qrcode
 import io
@@ -79,6 +81,8 @@ def create_booking():
         "created_at": datetime.now(timezone.utc),
     })
     _slot_ref(db, slot_id).update({"status": "reserved"})
+    broadcast({"slot_id": slot_id, "status": "reserved"})
+    write_slot_status(slot_id, "reserved")
 
     return jsonify({
         "booking_id": booking_ref.id,
@@ -126,6 +130,8 @@ def record_entry(booking_id):
     entry_time = datetime.now(timezone.utc)
     ref.update({"entry_time": entry_time, "status": "active"})
     _slot_ref(db, booking["slot_id"]).update({"status": "occupied"})
+    broadcast({"slot_id": booking["slot_id"], "status": "occupied"})
+    write_slot_status(booking["slot_id"], "occupied")
 
     # Tell RPi to open the entry gate servo
     publish("parking/gate/entry/open", {
@@ -173,6 +179,8 @@ def record_exit(booking_id):
 
     ref.update({"exit_time": exit_time, "status": "completed", "fare_amount": fare})
     _slot_ref(db, booking["slot_id"]).update({"status": "free", "vehicle_plate": None})
+    broadcast({"slot_id": booking["slot_id"], "status": "free"})
+    write_slot_status(booking["slot_id"], "free")
 
     return jsonify({
         "booking_id": booking_id,
@@ -197,5 +205,7 @@ def cancel_booking(booking_id):
 
     ref.update({"status": "cancelled"})
     _slot_ref(db, booking["slot_id"]).update({"status": "free", "vehicle_plate": None})
+    broadcast({"slot_id": booking["slot_id"], "status": "free"})
+    write_slot_status(booking["slot_id"], "free")
 
     return jsonify({"booking_id": booking_id, "status": "cancelled"}), 200
