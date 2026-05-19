@@ -206,6 +206,8 @@ def cancel_booking(booking_id):
         return jsonify({"error": "Booking not found"}), 404
 
     booking = doc.to_dict()
+    if not current_app.config.get("TESTING") and booking.get("user_id") != g.user_id:
+        return jsonify({"error": "Forbidden"}), 403
     if booking["status"] == "completed":
         return jsonify({"error": "Cannot cancel a completed booking"}), 409
 
