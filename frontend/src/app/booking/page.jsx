@@ -62,6 +62,10 @@ export default function BookingPage() {
   };
 
   const handleBookingSubmit = async (formData) => {
+    if (!selectedSlot) {
+      setBookingError('No slot selected. Please go back and select a slot.');
+      return;
+    }
     setSubmitting(true);
     setBookingError('');
     const result = await createBooking(

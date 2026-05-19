@@ -36,7 +36,7 @@ export default function BookingDetailPage() {
         setBookingLoading(false);
       });
     }
-  }, [isAuthenticated, params.id, getBooking]);
+  }, [isAuthenticated, params.id]);
 
   if (authLoading || bookingLoading) {
     return (

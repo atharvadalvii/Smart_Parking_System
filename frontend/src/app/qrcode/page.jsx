@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import Card from '@/components/common/Card';
@@ -90,7 +90,7 @@ export default function QRCodePage() {
         setActiveBookings(bookings.filter(b => b.status === 'confirmed' || b.status === 'active'))
       );
     }
-  }, [isAuthenticated, currentUser, getUserBookings]);
+  }, [isAuthenticated, currentUser]);
 
   if (authLoading || !isAuthenticated) {
     return (
