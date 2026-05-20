@@ -28,3 +28,6 @@ Thumbs.db
 .idea/
 .vscode/
 *.swp
+firebase_service_account.json
+backend/.env
+rpi/.env
