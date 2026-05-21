@@ -60,16 +60,16 @@ export default function RegisterPage() {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
-    if (validate()) {
-      const result = await register(formData);
+    if (!validate()) return;
+    register(formData).then((result) => {
       if (result.success) {
         router.push('/dashboard');
       } else {
         setServerError(result.error);
       }
-    }
+    });
   };
 
   return (
@@ -192,6 +192,7 @@ export default function RegisterPage() {
             Log In
           </Link>
         </div>
+
       </Card>
     </div>
   );

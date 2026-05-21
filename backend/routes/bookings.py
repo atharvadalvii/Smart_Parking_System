@@ -7,10 +7,8 @@ from services.graph import shortest_path
 from services.sse_bus import broadcast
 from services.influx_client import write_slot_status
 from services.auth_middleware import require_auth
+from services.qr_utils import generate_qr_base64
 import logging
-import qrcode
-import io
-import base64
 
 logger = logging.getLogger(__name__)
 
@@ -25,14 +23,6 @@ def _booking_ref(db, booking_id):
     return db.collection("bookings").document(booking_id)
 
 
-def _generate_qr_base64(booking_id: str) -> str:
-    """Generate a QR code encoding the booking_id. Returns base64 PNG string."""
-    img = qrcode.make(booking_id)
-    buffer = io.BytesIO()
-    img.save(buffer, format="PNG")
-    return base64.b64encode(buffer.getvalue()).decode("utf-8")
-
-
 def _serialize(data: dict) -> dict:
     for field in ("entry_time", "exit_time", "created_at"):
         if data.get(field) and hasattr(data[field], "isoformat"):
@@ -44,14 +34,12 @@ def _serialize(data: dict) -> dict:
 @require_auth
 def create_booking():
     data = request.get_json(silent=True) or {}
-    user_id = data.get("user_id", "").strip()
+    user_id = g.user_id
     slot_id = data.get("slot_id", "").strip()
+    plate = data.get("plate", "").strip().upper()
 
-    if not current_app.config.get("TESTING") and g.user_id != user_id:
-        return jsonify({"error": "Forbidden"}), 403
-
-    if not all([user_id, slot_id]):
-        return jsonify({"error": "user_id and slot_id are required"}), 400
+    if not all([slot_id, plate]):
+        return jsonify({"error": "slot_id and plate are required"}), 400
 
     date = data.get("date", "")
     start_time = data.get("start_time", "")
@@ -65,12 +53,26 @@ def create_booking():
     if slot_doc.to_dict().get("status") != "free":
         return jsonify({"error": "Slot is not free"}), 409
 
-    slot_number = slot_doc.to_dict().get("slot_number")
-    booking_ref = db.collection("bookings").document()
-    qr_code = _generate_qr_base64(booking_ref.id)
+    # Check plate doesn't already have a pending/active booking
+    existing = list(
+        db.collection("bookings")
+          .where("plate", "==", plate)
+          .where("status", "in", ["pending", "active"])
+          .limit(1).stream()
+    )
+    if existing:
+        return jsonify({"error": "This plate already has an active booking"}), 409
 
+    slot_number = slot_doc.to_dict().get("slot_number")
+    booking_code = f"B0{plate}"
+    qr_code = generate_qr_base64(booking_code)
+
+    booking_ref = db.collection("bookings").document()
     booking_ref.set({
+        "type": "booking",
         "user_id": user_id,
+        "plate": plate,
+        "booking_code": booking_code,
         "slot_id": slot_id,
         "slot_number": slot_number,
         "date": date or None,
@@ -91,12 +93,12 @@ def create_booking():
 
     return jsonify({
         "booking_id": booking_ref.id,
+        "plate": plate,
+        "booking_code": booking_code,
         "slot_id": slot_id,
         "slot_number": slot_number,
         "date": date or None,
         "start_time": start_time or None,
-        "duration": duration,
-        "estimated_cost": estimated_cost,
         "status": "pending",
         "qr_code": qr_code,
     }), 201
@@ -115,6 +117,15 @@ def get_booking(booking_id):
 def user_bookings(user_id):
     db = get_db()
     docs = db.collection("bookings").where("user_id", "==", user_id).stream()
+    results = [_serialize({**doc.to_dict(), "id": doc.id}) for doc in docs]
+    return jsonify(results), 200
+
+
+@bookings_bp.route("/plate/<plate>", methods=["GET"])
+def plate_bookings(plate):
+    """Return all bookings for a given number plate (public — for kiosk/status page)."""
+    db = get_db()
+    docs = db.collection("bookings").where("plate", "==", plate.upper()).stream()
     results = [_serialize({**doc.to_dict(), "id": doc.id}) for doc in docs]
     return jsonify(results), 200
 

@@ -72,29 +72,42 @@ def _handle_slot(slot_num: str, data: dict):
 
 
 def _handle_gate_entry(_data: dict):
-    """IR sensor at entry gate fired — increment vehicle count."""
-    db = get_db()
-    ref = db.collection("system").document("vehicle_count")
-    doc = ref.get()
-    current = doc.to_dict().get("count", 0) if doc.exists else 0
-    new_count = current + 1
-    ref.set({"count": new_count})
-    write_vehicle_count(new_count)
-    broadcast({"vehicle_count": new_count})
-    logger.info("Gate entry — vehicle count: %d", new_count)
+    """VL53L1X detected a car at entry — signal the kiosk to prompt for QR scan."""
+    broadcast({"car_at_entry": True})
+    logger.info("Entry gate: car detected — awaiting QR scan")
 
 
 def _handle_gate_exit(_data: dict):
-    """IR sensor at exit gate fired — decrement vehicle count."""
+    """Ultrasonic at exit gate — auto-fallback if driver did not scan QR at exit.
+
+    Finds the oldest active booking of any type and completes it.
+    """
+    from datetime import datetime, timezone
+    from services.fare import calculate_fare
     db = get_db()
-    ref = db.collection("system").document("vehicle_count")
-    doc = ref.get()
-    current = doc.to_dict().get("count", 0) if doc.exists else 0
-    new_count = max(current - 1, 0)
-    ref.set({"count": new_count})
-    write_vehicle_count(new_count)
-    broadcast({"vehicle_count": new_count})
-    logger.info("Gate exit — vehicle count: %d", new_count)
+
+    docs = list(db.collection("bookings").where("status", "==", "active").stream())
+    if not docs:
+        logger.info("Gate exit (auto) — no active booking found")
+        return
+
+    doc = min(docs, key=lambda d: d.to_dict().get("entry_time") or datetime.min.replace(tzinfo=timezone.utc))
+    booking = doc.to_dict()
+    exit_time = datetime.now(timezone.utc)
+    entry_time = booking.get("entry_time")
+    if entry_time and entry_time.tzinfo is None:
+        entry_time = entry_time.replace(tzinfo=timezone.utc)
+
+    fare = calculate_fare(entry_time, exit_time) if entry_time else 2.00
+    slot_id = booking.get("slot_id")
+
+    doc.reference.update({"exit_time": exit_time, "status": "completed", "fare_amount": fare})
+    if slot_id:
+        db.collection("parking_slots").document(slot_id).update({"status": "free"})
+        broadcast({"slot_id": slot_id, "status": "free"})
+
+    broadcast({"walk_in_completed": True, "booking_id": doc.id, "fare_amount": fare})
+    logger.info("Gate exit (auto) — booking %s completed, fare $%.2f", doc.id, fare)
 
 
 # ---------------------------------------------------------------------------

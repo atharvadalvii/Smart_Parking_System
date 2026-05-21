@@ -3,6 +3,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import { QRCodeSVG } from 'qrcode.react';
 import Card from '@/components/common/Card';
 import Button from '@/components/common/Button';
 import Toast from '@/components/common/Toast';
@@ -28,30 +29,29 @@ function BookingQRCard({ booking }) {
         )}
       </div>
 
-      {/* QR image from backend base64 PNG */}
       <div className="bg-white rounded-[12px] p-[24px] border border-divider inline-block mb-[16px]">
         {booking.qrCode ? (
           <img
             src={`data:image/png;base64,${booking.qrCode}`}
             alt={`QR code for booking ${booking.id}`}
-            width={220}
-            height={220}
+            width={160}
+            height={160}
             className="block"
           />
         ) : (
-          <div className="w-[220px] h-[220px] flex items-center justify-center text-text-black-soft text-[13px]">
+          <div className="w-[160px] h-[160px] flex items-center justify-center text-text-black-soft text-[13px]">
             QR not available
           </div>
         )}
       </div>
 
-      <p className="text-[12px] text-text-black-soft font-mono mb-[16px] break-all px-[8px]">
+      <p className="text-[11px] text-text-black-soft font-mono mb-[16px] break-all px-[8px]">
         {booking.id}
       </p>
 
       <div className="flex flex-col gap-[8px]">
         <Button variant="outlineDark" size="sm" onClick={handleDownload} className="w-full">
-          ↓ Download QR Code
+          ↓ Download
         </Button>
         <Link href={`/payment?bookingId=${booking.id}`} className="block">
           <Button variant="secondary" className="w-full !py-[10px] text-[14px] !bg-starbucks-green !text-white hover:!bg-starbucks-green/90">
@@ -64,7 +64,6 @@ function BookingQRCard({ booking }) {
 }
 
 export default function QRCodePage() {
-  // All hooks must be declared before any conditional returns
   const { currentUser, isAuthenticated, isLoading: authLoading } = useAuth();
   const { getUserBookings } = useBooking();
   const router = useRouter();
@@ -87,7 +86,10 @@ export default function QRCodePage() {
   useEffect(() => {
     if (isAuthenticated && currentUser) {
       getUserBookings(currentUser.id).then(bookings =>
-        setActiveBookings(bookings.filter(b => b.status === 'pending' || b.status === 'confirmed' || b.status === 'active'))
+        setActiveBookings(bookings.filter(b =>
+          (b.status === 'pending' || b.status === 'confirmed' || b.status === 'active') &&
+          b.type !== 'walk_in'
+        ))
       );
     }
   }, [isAuthenticated, currentUser]);
@@ -101,60 +103,78 @@ export default function QRCodePage() {
   }
 
   return (
-    <div className="flex-grow container mx-auto px-4 md:px-6 lg:px-10 max-w-[600px] py-[32px] md:py-[48px]">
+    <div className="flex-grow container mx-auto px-4 md:px-6 lg:px-10 max-w-[640px] py-[32px] md:py-[48px]">
       {toast && <Toast message={toast} onClose={() => setToast(null)} />}
 
       {/* Header */}
       <div className="text-center mb-[32px]">
         <h1 className="text-[24px] md:text-[32px] font-semibold text-starbucks-green mb-[4px]">
-          My QR Code{activeBookings.length > 1 ? 's' : ''}
+          My Parking Pass
         </h1>
         <p className="text-[16px] text-text-black-soft">
-          Present your booking QR code at the gate scanner
+          Scan at the gate — works for walk-in and reservations
         </p>
       </div>
 
-      {/* Active booking QR codes */}
-      {activeBookings.length > 0 ? (
-        <div className="space-y-[24px]">
-          {activeBookings.map(booking => (
-            <BookingQRCard key={booking.id} booking={booking} />
-          ))}
-        </div>
-      ) : (
-        <Card elevated className="text-center py-[48px]">
-          <div className="text-[48px] mb-[16px]">🅿️</div>
-          <h2 className="text-[18px] font-semibold text-text-black mb-[8px]">No Active Bookings</h2>
-          <p className="text-[14px] text-text-black-soft mb-[24px]">
-            You don&apos;t have any confirmed or active bookings right now.
-          </p>
-          <Link href="/booking">
-            <Button variant="primary">Book a Parking Slot</Button>
-          </Link>
-        </Card>
-      )}
-
-      {/* How to Use */}
-      <Card elevated className="mt-[24px]">
-        <h3 className="text-[16px] font-semibold text-text-black mb-[16px]">How to Use</h3>
-        <div className="space-y-[16px]">
-          <div className="flex items-start gap-[12px]">
-            <div className="w-[28px] h-[28px] rounded-full bg-green-accent text-white text-[14px] font-bold flex items-center justify-center shrink-0">1</div>
-            <p className="text-[14px] text-text-black-soft leading-[1.6]">
-              <strong className="text-text-black">At the entrance gate:</strong> Present this QR code to the scanner. The gate will open if you have an active booking.
-            </p>
+      {/* Personal Gate Pass QR */}
+      <Card elevated className="mb-[32px]">
+        <div className="flex flex-col items-center text-center">
+          <div className="text-[13px] font-semibold text-text-black-soft uppercase tracking-widest mb-[16px]">
+            Your Personal Gate Pass
           </div>
-          <div className="flex items-start gap-[12px]">
-            <div className="w-[28px] h-[28px] rounded-full bg-green-accent text-white text-[14px] font-bold flex items-center justify-center shrink-0">2</div>
-            <p className="text-[14px] text-text-black-soft leading-[1.6]">
-              <strong className="text-text-black">At the exit gate:</strong> Scan the same QR code again. The system will calculate your parking duration and fees.
-            </p>
+
+          <div className="bg-white p-[20px] rounded-[16px] inline-block mb-[16px] border border-divider shadow-sm">
+            {currentUser?.id && (
+              <QRCodeSVG
+                value={currentUser.id}
+                size={200}
+              />
+            )}
+          </div>
+
+          <p className="text-[15px] font-semibold text-text-black mb-[2px]">
+            {currentUser?.name || currentUser?.email}
+          </p>
+          <p className="text-[12px] text-text-black-soft font-mono break-all px-4">
+            {currentUser?.id}
+          </p>
+
+          <div className="mt-[16px] bg-[#f2f0eb] rounded-[12px] p-[16px] w-full text-left space-y-[10px]">
+            <div className="flex items-start gap-[10px]">
+              <span className="w-[22px] h-[22px] rounded-full bg-starbucks-green text-white text-[12px] font-bold flex items-center justify-center shrink-0">1</span>
+              <p className="text-[13px] text-text-black-soft leading-[1.5]">
+                <strong className="text-text-black">Entry gate:</strong> Scan this QR. If you have a reservation it activates — otherwise a free slot is assigned automatically.
+              </p>
+            </div>
+            <div className="flex items-start gap-[10px]">
+              <span className="w-[22px] h-[22px] rounded-full bg-starbucks-green text-white text-[12px] font-bold flex items-center justify-center shrink-0">2</span>
+              <p className="text-[13px] text-text-black-soft leading-[1.5]">
+                <strong className="text-text-black">Exit gate:</strong> Scan the same QR again. Your fare is calculated and the gate opens.
+              </p>
+            </div>
+            <div className="flex items-start gap-[10px]">
+              <span className="w-[22px] h-[22px] rounded-full bg-starbucks-green text-white text-[12px] font-bold flex items-center justify-center shrink-0">3</span>
+              <p className="text-[13px] text-text-black-soft leading-[1.5]">
+                <strong className="text-text-black">Payment:</strong> Check your booking history to review and pay the fare.
+              </p>
+            </div>
           </div>
         </div>
       </Card>
 
-      {/* Back button */}
-      <div className="mt-[24px] text-center">
+      {/* Active reservation QRs (if any) */}
+      {activeBookings.length > 0 && (
+        <>
+          <h2 className="text-[18px] font-semibold text-text-black mb-[16px]">Active Reservations</h2>
+          <div className="space-y-[16px] mb-[32px]">
+            {activeBookings.map(booking => (
+              <BookingQRCard key={booking.id} booking={booking} />
+            ))}
+          </div>
+        </>
+      )}
+
+      <div className="text-center">
         <Link href="/dashboard">
           <Button variant="ghost">← Back to Dashboard</Button>
         </Link>

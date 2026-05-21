@@ -96,6 +96,7 @@ const BookingForm = ({ selectedSlot, hourlyRate = 2, onSubmit, onCancel, submitt
   const defaultTime = nextH >= 24 ? '23:59' : `${String(nextH).padStart(2, '0')}:00`;
 
   const [formData, setFormData] = useState({
+    plate: '',
     date: todayStr,
     startTime: defaultTime,
     duration: 1,
@@ -121,6 +122,10 @@ const BookingForm = ({ selectedSlot, hourlyRate = 2, onSubmit, onCancel, submitt
     const newErrors = {};
     const selectedDate = new Date(formData.date);
     const today = new Date(todayStr);
+
+    if (!formData.plate.trim()) {
+      newErrors.plate = 'Vehicle number plate is required';
+    }
 
     if (!formData.date) {
       newErrors.date = 'Please select a date';
@@ -169,6 +174,26 @@ const BookingForm = ({ selectedSlot, hourlyRate = 2, onSubmit, onCancel, submitt
           <div className="text-[16px] font-semibold text-text-black">Slot {selectedSlot?.name} Selected</div>
           <div className="text-[14px] text-text-black-soft">You can change this by going back to Step 1</div>
         </div>
+      </div>
+
+      {/* Number Plate */}
+      <div>
+        <label className="block text-[14px] font-semibold mb-[8px] text-text-black" htmlFor="plate">
+          Vehicle Number Plate
+        </label>
+        <input
+          id="plate"
+          name="plate"
+          type="text"
+          value={formData.plate}
+          onChange={e => {
+            setFormData(prev => ({ ...prev, plate: e.target.value.toUpperCase() }));
+            setErrors(prev => ({ ...prev, plate: '' }));
+          }}
+          placeholder="e.g. 1ABC234"
+          className={`${inputStyles} uppercase tracking-widest font-mono ${errors.plate ? errorInputStyles : normalInputStyles}`}
+        />
+        {errors.plate && <p className="mt-[4px] text-[13px] text-error">{errors.plate}</p>}
       </div>
 
       {/* Date */}

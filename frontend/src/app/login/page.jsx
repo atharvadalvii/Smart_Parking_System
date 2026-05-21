@@ -38,16 +38,16 @@ export default function LoginPage() {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
-    if (validate()) {
-      const result = await login(formData.email, formData.password);
+    if (!validate()) return;
+    login(formData.email, formData.password).then((result) => {
       if (result.success) {
         router.push('/dashboard');
       } else {
         setServerError(result.error);
       }
-    }
+    });
   };
 
   return (
@@ -112,6 +112,7 @@ export default function LoginPage() {
             Sign Up
           </Link>
         </div>
+
       </Card>
     </div>
   );

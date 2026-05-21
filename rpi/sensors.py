@@ -74,6 +74,39 @@ def _exit_gate_loop(trig: int, echo: int, stop_event: threading.Event):
         stop_event.wait(0.5)
 
 
+def _entry_gate_loop(stop_event: threading.Event):
+    """Poll VL53L1X laser at entry gate — publish gate/entry when car arrives."""
+    try:
+        import board
+        import busio
+        import adafruit_vl53l1x
+        i2c = busio.I2C(board.SCL, board.SDA)
+        sensor = adafruit_vl53l1x.VL53L1X(i2c)
+        sensor.start_ranging()
+        logger.info("VL53L1X entry gate sensor ready (I2C 0x%02X)", config.VL53L1X_I2C_ADDRESS)
+    except Exception as exc:
+        logger.warning("VL53L1X entry gate not available: %s", exc)
+        return
+
+    car_present = False
+    while not stop_event.is_set():
+        try:
+            if sensor.data_ready:
+                dist = sensor.distance
+                sensor.clear_interrupt()
+                if dist is not None:
+                    detected = dist < config.OCCUPANCY_THRESHOLD_CM
+                    if detected and not car_present:
+                        car_present = True
+                        mqtt_client.publish_gate_entry()
+                        logger.info("Entry gate: car detected (%.1f cm)", dist)
+                    elif not detected and car_present:
+                        car_present = False
+        except Exception as exc:
+            logger.error("VL53L1X read error: %s", exc)
+        stop_event.wait(0.3)
+
+
 def start(stop_event: threading.Event):
     """Start one polling thread per slot plus exit gate ultrasonic."""
     for slot_num, pins in config.ULTRASONIC.items():
@@ -93,4 +126,11 @@ def start(stop_event: threading.Event):
         name="sensor-exit-gate",
     ).start()
 
-    logger.info("Ultrasonic sensor threads started for %d slots + exit gate", len(config.ULTRASONIC))
+    threading.Thread(
+        target=_entry_gate_loop,
+        args=(stop_event,),
+        daemon=True,
+        name="sensor-entry-gate",
+    ).start()
+
+    logger.info("Ultrasonic sensor threads started for %d slots + exit gate + VL53L1X entry", len(config.ULTRASONIC))

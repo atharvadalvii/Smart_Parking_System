@@ -29,18 +29,18 @@ function normalizeBooking(b) {
 }
 
 export const BookingProvider = ({ children }) => {
-  const createBooking = useCallback(async (userId, slotId, _slotName, date, startTime, duration) => {
+  const createBooking = useCallback(async (userId, slotId, _slotName, date, startTime, duration, plate) => {
     const estimatedCost = parseFloat((duration * 3).toFixed(2));
     try {
       const data = await api.post('/api/bookings/', {
-        user_id: userId,
         slot_id: slotId,
+        plate,
         date,
         start_time: startTime,
         duration,
         estimated_cost: estimatedCost,
       });
-      return { success: true, bookingId: data.booking_id };
+      return { success: true, bookingId: data.booking_id, qrCode: data.qr_code, plate: data.plate };
     } catch (err) {
       return { success: false, error: err.message };
     }

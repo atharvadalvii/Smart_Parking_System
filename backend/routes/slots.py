@@ -49,10 +49,13 @@ def update_slot_status(slot_id):
 
 @slots_bp.route("/count", methods=["GET"])
 def vehicle_count():
-    """Returns gate-based IR sensor vehicle count (total cars currently in lot)."""
+    """Returns vehicle count derived from occupied/reserved slot states."""
     db = get_db()
-    doc = db.collection("system").document("vehicle_count").get()
-    count = doc.to_dict().get("count", 0) if doc.exists else 0
+    slots_docs = db.collection("parking_slots").stream()
+    count = sum(
+        1 for s in slots_docs
+        if s.to_dict().get("status") in ("occupied", "reserved")
+    )
     return jsonify({"vehicle_count": count}), 200
 
 

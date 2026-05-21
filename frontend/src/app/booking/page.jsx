@@ -74,7 +74,8 @@ export default function BookingPage() {
       selectedSlot.name,
       formData.date,
       formData.startTime,
-      formData.duration
+      formData.duration,
+      formData.plate
     );
     setSubmitting(false);
 

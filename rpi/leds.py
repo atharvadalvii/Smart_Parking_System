@@ -23,24 +23,15 @@ _path_timer: threading.Timer = None
 
 
 # ── RGB LEDs ────────────────────────────────────────────────────────────────
+# RGB LED pins conflict with ultrasonic sensor pins in the final hardware —
+# slot status is shown via the web dashboard instead.
 
 def _setup_rgb():
-    for pins in config.RGB_LEDS.values():
-        GPIO.setup(pins["r"], GPIO.OUT)
-        GPIO.setup(pins["g"], GPIO.OUT)
-        GPIO.setup(pins["b"], GPIO.OUT)
+    pass
 
 
 def set_slot_led(slot_id: str, status: str):
-    """Set the RGB LED for a slot based on its status."""
-    pins = config.RGB_LEDS.get(slot_id)
-    if pins is None:
-        return
-    r, g, b = _SLOT_COLOURS.get(status, (False, False, False))
-    GPIO.output(pins["r"], r)
-    GPIO.output(pins["g"], g)
-    GPIO.output(pins["b"], b)
-    logger.debug("LED %s → %s", slot_id, status)
+    pass
 
 
 # ── WS2812B NeoPixel strip ──────────────────────────────────────────────────
@@ -97,15 +88,8 @@ def show_path(waypoints: list):
 def start():
     _setup_rgb()
     _setup_strip()
-    # Default all slots to free (green)
-    for slot_id in config.RGB_LEDS:
-        set_slot_led(slot_id, "free")
     logger.info("LED module ready")
 
 
 def cleanup():
     _clear_strip()
-    for pins in config.RGB_LEDS.values():
-        GPIO.output(pins["r"], False)
-        GPIO.output(pins["g"], False)
-        GPIO.output(pins["b"], False)
