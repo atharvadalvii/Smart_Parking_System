@@ -87,7 +87,7 @@ export default function QRCodePage() {
   useEffect(() => {
     if (isAuthenticated && currentUser) {
       getUserBookings(currentUser.id).then(bookings =>
-        setActiveBookings(bookings.filter(b => b.status === 'confirmed' || b.status === 'active'))
+        setActiveBookings(bookings.filter(b => b.status === 'pending' || b.status === 'confirmed' || b.status === 'active'))
       );
     }
   }, [isAuthenticated, currentUser]);

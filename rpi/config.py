@@ -23,7 +23,13 @@ OCCUPANCY_THRESHOLD_CM = 15   # distance below this → car present
 
 # ── IR Gate Sensors (input, active LOW) ───────────────────────────────────
 IR_ENTRY_PIN = 5
-IR_EXIT_PIN  = 6
+# IR_EXIT_PIN replaced by ultrasonic — set pins below
+
+# ── Exit gate ultrasonic (replaces IR exit sensor) ────────────────────────
+ULTRASONIC_EXIT_GATE = {
+    "trig": int(os.environ.get("EXIT_GATE_TRIG", 16)),
+    "echo": int(os.environ.get("EXIT_GATE_ECHO", 25)),
+}
 
 # ── Servo Motors (PWM, 50 Hz) ─────────────────────────────────────────────
 SERVO_ENTRY_PIN  = 12

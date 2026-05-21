@@ -54,13 +54,11 @@ def _ir_callback(channel):
 def start():
     global _entry_servo, _exit_servo
 
-    # IR sensors — input with pull-up, detect falling edge (active LOW)
+    # IR entry sensor — input with pull-up, detect falling edge (active LOW)
     GPIO.setup(config.IR_ENTRY_PIN, GPIO.IN, pull_up_down=GPIO.PUD_UP)
-    GPIO.setup(config.IR_EXIT_PIN,  GPIO.IN, pull_up_down=GPIO.PUD_UP)
     GPIO.add_event_detect(config.IR_ENTRY_PIN, GPIO.FALLING,
                           callback=_ir_callback, bouncetime=500)
-    GPIO.add_event_detect(config.IR_EXIT_PIN,  GPIO.FALLING,
-                          callback=_ir_callback, bouncetime=500)
+    # Exit gate uses ultrasonic sensor (handled in sensors.py)
 
     # Servo motors
     _entry_servo = _setup_servo(config.SERVO_ENTRY_PIN)
