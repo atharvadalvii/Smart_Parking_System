@@ -44,41 +44,19 @@ def _find_device() -> evdev.InputDevice | None:
     return None
 
 
-def _resolve_gate(booking_id: str) -> str | None:
-    """GET the booking status and return 'entry' or 'exit', or None on error."""
-    url = f"{config.BACKEND_URL}/api/bookings/{booking_id}"
+def _call_backend(user_id: str):
+    """POST to /api/gate/scan — backend decides entry vs exit automatically."""
+    url = f"{config.BACKEND_URL}/api/gate/scan"
     try:
-        resp = requests.get(url, timeout=5)
-        if not resp.ok:
-            logger.warning("Could not fetch booking %s: %s", booking_id, resp.status_code)
-            return None
-        status = resp.json().get("status", "")
-        if status == "pending":
-            return "entry"
-        if status == "active":
-            return "exit"
-        logger.warning("Booking %s status '%s' — not actionable at gate", booking_id, status)
-        return None
-    except Exception as exc:
-        logger.error("Booking lookup failed: %s", exc)
-        return None
-
-
-def _call_backend(booking_id: str):
-    """Determine entry vs exit from booking status, then PUT the right endpoint."""
-    gate = _resolve_gate(booking_id)
-    if gate is None:
-        return
-    url = f"{config.BACKEND_URL}/api/bookings/{booking_id}/{gate}"
-    try:
-        resp = requests.put(url, timeout=5)
+        resp = requests.post(url, json={"user_id": user_id}, timeout=5)
         data = resp.json()
         if resp.ok:
-            logger.info("Backend %s OK: %s", gate, data)
+            logger.info("Gate scan OK: action=%s type=%s slot=%s",
+                        data.get("action"), data.get("type"), data.get("slot"))
         else:
-            logger.warning("Backend %s error: %s", gate, data)
+            logger.warning("Gate scan error: %s", data)
     except Exception as exc:
-        logger.error("Backend call failed: %s", exc)
+        logger.error("Gate scan call failed: %s", exc)
 
 
 _SHIFT_KEYS = {evdev.ecodes.KEY_LEFTSHIFT, evdev.ecodes.KEY_RIGHTSHIFT}
@@ -92,7 +70,7 @@ def _read_loop(stop_event: threading.Event):
         return
 
     device.grab()   # exclusive access so keystrokes don't reach the OS
-    logger.info("QR scanner ready (auto entry/exit from booking status)")
+    logger.info("QR scanner ready — scans user_id QR codes for gate entry/exit")
 
     buffer = ""
     shift_held = False
@@ -113,14 +91,14 @@ def _read_loop(stop_event: threading.Event):
 
         code = key_event.scancode
         if code == evdev.ecodes.KEY_ENTER:
-            booking_id = buffer.strip()
+            user_id = buffer.strip()
             buffer = ""
             shift_held = False
-            if booking_id:
-                logger.info("QR scanned: %s", booking_id)
+            if user_id:
+                logger.info("QR scanned: user_id=%s", user_id)
                 threading.Thread(
                     target=_call_backend,
-                    args=(booking_id,),
+                    args=(user_id,),
                     daemon=True,
                 ).start()
         else:

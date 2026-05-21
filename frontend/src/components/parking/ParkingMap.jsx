@@ -25,17 +25,6 @@ const ParkingMap = ({ slots, gates, onSlotClick }) => {
         <rect x="0" y="0" width="800" height="600" fill="#f9f9f9" rx="20" />
         <rect x="20" y="20" width="760" height="560" fill="#edebe9" rx="10" />
 
-        {/* Entry Lane & Gate */}
-        <path d="M 100 20 L 100 150" stroke="#d6dbde" strokeWidth="40" strokeDasharray="10, 10" />
-        <text x="150" y="80" fontSize="20" fill="#1E3932" fontWeight="bold">ENTRY</text>
-        <rect x="60" y="140" width="80" height="10" fill={getGateColor(gates?.entry?.isOpen)} />
-        {gates?.entry?.isOpen && <text x="150" y="150" fontSize="16" fill="#00754A" fontWeight="bold">OPEN</text>}
-
-        {/* Exit Lane & Gate */}
-        <path d="M 700 450 L 700 580" stroke="#d6dbde" strokeWidth="40" strokeDasharray="10, 10" />
-        <text x="590" y="530" fontSize="20" fill="#1E3932" fontWeight="bold">EXIT</text>
-        <rect x="660" y="450" width="80" height="10" fill={getGateColor(gates?.exit?.isOpen)} />
-        {gates?.exit?.isOpen && <text x="590" y="460" fontSize="16" fill="#00754A" fontWeight="bold">OPEN</text>}
 
         {/* Driveway path */}
         <path d="M 100 180 L 100 220 L 700 220 L 700 420" stroke="#ffffff" strokeWidth="8" strokeDasharray="15, 15" fill="none" />

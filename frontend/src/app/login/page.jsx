@@ -38,16 +38,16 @@ export default function LoginPage() {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
-    if (validate()) {
-      const result = await login(formData.email, formData.password);
+    if (!validate()) return;
+    login(formData.email, formData.password).then((result) => {
       if (result.success) {
         router.push('/dashboard');
       } else {
         setServerError(result.error);
       }
-    }
+    });
   };
 
   return (
@@ -110,6 +110,12 @@ export default function LoginPage() {
           Don't have an account?{' '}
           <Link href="/register" className="text-green-accent hover:underline font-semibold">
             Sign Up
+          </Link>
+        </div>
+
+        <div className="mt-[16px] text-center">
+          <Link href="/dashboard" className="text-[14px] text-text-black-soft hover:text-text-black transition-colors">
+            Continue as Guest →
           </Link>
         </div>
       </Card>

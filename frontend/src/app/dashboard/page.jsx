@@ -4,24 +4,16 @@ import React, { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useParkingData } from '@/hooks/useParkingData';
 import ParkingMap from '@/components/parking/ParkingMap';
-import SlotIndicator from '@/components/parking/SlotIndicator';
 import VehicleCounter from '@/components/parking/VehicleCounter';
-import GateStatus from '@/components/parking/GateStatus';
 import Card from '@/components/common/Card';
 import { useAuth } from '@/hooks/useAuth';
 
 export default function DashboardPage() {
-  const { slots, gates, vehicleCount, totalSlots, isConnected } = useParkingData();
+  const { slots, vehicleCount, totalSlots, isConnected } = useParkingData();
   const { isAuthenticated, isLoading: authLoading } = useAuth();
   const router = useRouter();
 
-  useEffect(() => {
-    if (!authLoading && !isAuthenticated) {
-      router.push('/login');
-    }
-  }, [authLoading, isAuthenticated, router]);
-
-  if (authLoading || !isAuthenticated) {
+  if (authLoading) {
     return (
       <div className="flex-grow flex items-center justify-center">
         <div className="text-text-black-soft text-[16px]">Loading...</div>
@@ -31,9 +23,12 @@ export default function DashboardPage() {
 
   const handleSlotClick = (slotId) => {
     const slot = slots?.find(s => s.id === slotId);
-    if (slot && slot.status === 'free') {
-      router.push(`/booking?slot=${slot.name}`);
+    if (!slot || slot.status !== 'free') return;
+    if (!isAuthenticated) {
+      router.push(`/guest-booking?slot=${slot.name}&slotId=${slot.id}`);
+      return;
     }
+    router.push(`/booking?slot=${slot.name}`);
   };
 
   return (
@@ -66,10 +61,10 @@ export default function DashboardPage() {
           <Card elevated className="w-full h-[500px] lg:h-[600px] p-0 overflow-hidden flex flex-col">
             <div className="px-[24px] py-[16px] border-b border-divider bg-white shrink-0 flex items-center justify-between">
               <h2 className="text-[19px] font-semibold text-text-black">Parking Map</h2>
-              <span className="text-[13px] text-text-black-soft">Click a green slot to book</span>
+              <span className="text-[13px] text-text-black-soft">Click a free slot to book</span>
             </div>
             <div className="flex-grow bg-[#f2f0eb] relative overflow-hidden">
-              <ParkingMap slots={slots} gates={gates} onSlotClick={handleSlotClick} />
+              <ParkingMap slots={slots} onSlotClick={handleSlotClick} />
             </div>
           </Card>
         </div>
@@ -79,17 +74,6 @@ export default function DashboardPage() {
 
           <VehicleCounter vehicleCount={vehicleCount} totalSlots={totalSlots} />
 
-          <GateStatus gates={gates} />
-
-          {/* Slots List */}
-          <div className="flex flex-col gap-[16px]">
-            <h2 className="text-[19px] font-semibold text-text-black mt-[8px]">Slot Details</h2>
-            <div className="flex flex-col gap-[12px] max-h-[500px] overflow-y-auto pr-2 pb-2">
-              {slots && slots.map(slot => (
-                <SlotIndicator key={slot.id} slot={slot} />
-              ))}
-            </div>
-          </div>
 
         </div>
 
