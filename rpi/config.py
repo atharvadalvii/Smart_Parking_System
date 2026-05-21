@@ -12,45 +12,33 @@ MQTT_PORT     = int(os.environ.get("MQTT_PORT", 1883))
 MQTT_USERNAME = os.environ.get("MQTT_USERNAME", "")
 MQTT_PASSWORD = os.environ.get("MQTT_PASSWORD", "")
 
-# ── HC-SR04 Ultrasonic Sensors (TRIG, ECHO) per slot ──────────────────────
+# ── RCWL-1601 Ultrasonic Slot Sensors (TRIG, ECHO) ────────────────────────
 ULTRASONIC = {
-    "1": {"trig": 23, "echo": 24},
-    "2": {"trig": 20, "echo": 21},
-    "3": {"trig": 26, "echo": 19},
+    "1": {"trig": 17, "echo": 27},
+    "2": {"trig": 22, "echo": 23},
+    "3": {"trig": 24, "echo": 25},
 }
-SENSOR_INTERVAL_S = 2.0       # how often to poll each sensor
-OCCUPANCY_THRESHOLD_CM = 15   # distance below this → car present
+SENSOR_INTERVAL_S    = 2.0
+OCCUPANCY_THRESHOLD_CM = 15
 
-# ── IR Gate Sensors (input, active LOW) ───────────────────────────────────
-IR_ENTRY_PIN = 5
-# IR_EXIT_PIN replaced by ultrasonic — set pins below
+# ── Exit Gate Ultrasonic Sensor ────────────────────────────────────────────
+ULTRASONIC_EXIT_GATE = {"trig": 5, "echo": 6}
 
-# ── Exit gate ultrasonic (replaces IR exit sensor) ────────────────────────
-ULTRASONIC_EXIT_GATE = {
-    "trig": int(os.environ.get("EXIT_GATE_TRIG", 16)),
-    "echo": int(os.environ.get("EXIT_GATE_ECHO", 25)),
-}
+# ── Entry Gate — VL53L1X Time-of-Flight Laser (I2C) ───────────────────────
+VL53L1X_I2C_ADDRESS = 0x29
 
-# ── Servo Motors (PWM, 50 Hz) ─────────────────────────────────────────────
-SERVO_ENTRY_PIN  = 12
-SERVO_EXIT_PIN   = 13
-SERVO_FREQ       = 50
-SERVO_OPEN_DC    = 7.5   # duty cycle for 90° (gate open)
-SERVO_CLOSED_DC  = 2.5   # duty cycle for 0°  (gate closed)
-GATE_OPEN_S      = 5.0   # seconds gate stays open
+# ── Servo Motors via PCA9685 I2C Servo Driver (I2C address 0x44) ──────────
+PCA9685_I2C_ADDRESS  = 0x44
+SERVO_ENTRY_CHANNEL  = 0
+SERVO_EXIT_CHANNEL   = 2
+SERVO_OPEN_ANGLE     = 85    # degrees
+SERVO_CLOSED_ANGLE   = 5     # degrees
+GATE_OPEN_S          = 5.0
 
-# ── RGB LEDs per slot (R, G, B GPIO pins, common cathode) ─────────────────
-RGB_LEDS = {
-    "S1": {"r": 17, "g": 27, "b": 22},
-    "S2": {"r": 10, "g":  9, "b": 11},
-    "S3": {"r": 25, "g":  8, "b":  7},
-}
-
-# ── WS2812B NeoPixel LED Strip (path guidance) ────────────────────────────
-NEOPIXEL_PIN        = 18    # must be a hardware PWM pin
-NEOPIXEL_COUNT      = 24    # total LEDs on the strip
+# ── WS2812B NeoPixel LED Strip (path guidance, GPIO 18) ───────────────────
+NEOPIXEL_PIN        = 18
+NEOPIXEL_COUNT      = 24
 NEOPIXEL_BRIGHTNESS = 0.3
-# Map graph waypoint names → LED index ranges on the strip
 WAYPOINT_LEDS = {
     "entry":    (0,  2),
     "junction": (3,  5),
@@ -61,13 +49,13 @@ WAYPOINT_LEDS = {
     "bay_S3":   (18, 20),
     "S3":       (21, 23),
 }
-PATH_COLOUR      = (0, 150, 255)   # blue-white for path LEDs
-PATH_ACTIVE_S    = 30.0            # how long the path stays lit
+PATH_COLOUR   = (0, 150, 255)
+PATH_ACTIVE_S = 30.0
 
-# ── 16×2 LCD (I2C) ───────────────────────────────────────────────────────
-LCD_I2C_ADDRESS = 0x27
+# ── LCD Display ST7032 (I2C) ───────────────────────────────────────────────
+LCD_I2C_ADDRESS = 0x3E
 LCD_COLS = 16
 LCD_ROWS = 2
 
 # ── GM65 QR Scanner (USB HID — appears as keyboard device) ───────────────
-QR_DEVICE_PATH = os.environ.get("QR_DEVICE_PATH", "")   # e.g. /dev/input/event0
+QR_DEVICE_PATH = os.environ.get("QR_DEVICE_PATH", "")
