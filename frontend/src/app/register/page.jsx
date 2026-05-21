@@ -193,11 +193,6 @@ export default function RegisterPage() {
           </Link>
         </div>
 
-        <div className="mt-[16px] text-center">
-          <Link href="/dashboard" className="text-[14px] text-text-black-soft hover:text-text-black transition-colors">
-            Continue as Guest →
-          </Link>
-        </div>
       </Card>
     </div>
   );

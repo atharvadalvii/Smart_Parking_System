@@ -10,6 +10,7 @@ from routes.events import events_bp
 from routes.walkin import walkin_bp
 from routes.gate import gate_bp
 from routes.guest import guest_bp
+from routes.entry import entry_bp
 
 def create_app():
     app = Flask(__name__)
@@ -30,6 +31,7 @@ def create_app():
     app.register_blueprint(walkin_bp, url_prefix="/api/walkin")
     app.register_blueprint(gate_bp, url_prefix="/api/gate")
     app.register_blueprint(guest_bp, url_prefix="/api/guest")
+    app.register_blueprint(entry_bp, url_prefix="/api/entry")
 
     return app
 
