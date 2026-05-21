@@ -56,8 +56,26 @@ def _slot_loop(slot_num: str, trig: int, echo: int, stop_event: threading.Event)
         stop_event.wait(config.SENSOR_INTERVAL_S)
 
 
+def _exit_gate_loop(trig: int, echo: int, stop_event: threading.Event):
+    """Poll exit gate ultrasonic — publish gate/exit when car arrives, once per presence."""
+    GPIO.setup(trig, GPIO.OUT)
+    GPIO.setup(echo, GPIO.IN)
+    logger.info("Exit gate ultrasonic started (TRIG=%d ECHO=%d)", trig, echo)
+    car_present = False
+    while not stop_event.is_set():
+        dist = _measure_distance(trig, echo)
+        detected = 0 < dist < config.OCCUPANCY_THRESHOLD_CM
+        if detected and not car_present:
+            car_present = True
+            mqtt_client.publish_gate_exit()
+            logger.info("Exit gate: car detected (%.1f cm)", dist)
+        elif not detected and car_present:
+            car_present = False
+        stop_event.wait(0.5)
+
+
 def start(stop_event: threading.Event):
-    """Start one polling thread per slot."""
+    """Start one polling thread per slot plus exit gate ultrasonic."""
     for slot_num, pins in config.ULTRASONIC.items():
         t = threading.Thread(
             target=_slot_loop,
@@ -66,4 +84,13 @@ def start(stop_event: threading.Event):
             name=f"sensor-S{slot_num}",
         )
         t.start()
-    logger.info("Ultrasonic sensor threads started for %d slots", len(config.ULTRASONIC))
+
+    pins = config.ULTRASONIC_EXIT_GATE
+    threading.Thread(
+        target=_exit_gate_loop,
+        args=(pins["trig"], pins["echo"], stop_event),
+        daemon=True,
+        name="sensor-exit-gate",
+    ).start()
+
+    logger.info("Ultrasonic sensor threads started for %d slots + exit gate", len(config.ULTRASONIC))
