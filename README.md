@@ -1,4 +1,4 @@
-# Smart Parking System — CITS5506 IoT Group Project
+# Smart Parking System 
 
 A full-stack IoT smart parking system with real-time slot monitoring, QR-based gate control, automated fare calculation, and live dashboards.
 
