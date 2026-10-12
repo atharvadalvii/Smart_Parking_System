@@ -1,6 +1,6 @@
 RPi.GPIO==0.7.1
 paho-mqtt==2.1.0
-requests==2.31.0
+requests==2.33.0
 evdev==1.6.1
 rpi-ws281x==4.3.4
 adafruit-circuitpython-neopixel==6.3.11
